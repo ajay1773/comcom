@@ -21,6 +21,7 @@ from app.graph.workflows.signup.subgraphs.signup_with_details.nodes.runner impor
 from app.graph.workflows.signin.subgraphs.login_with_credentials.nodes.runner import run_login_with_credentials
 from app.graph.workflows.auth_middleware.nodes.runner import run_auth_middleware
 from app.graph.workflows.order_management.subgraphs.add_to_cart.nodes.runner import run_add_to_cart
+from app.graph.workflows.order_management.subgraphs.view_cart.nodes.runner import run_view_cart
 
 
 
@@ -65,6 +66,17 @@ async def run_auth_protected_add_to_cart(state: GlobalState, config=None) -> Glo
     
     # If auth passed, run the actual product search workflow
     return await run_add_to_cart(auth_state, config)
+
+async def run_auth_protected_view_cart(state: GlobalState, config=None) -> GlobalState:
+    """Run view cart with auth middleware protection."""
+    auth_state = await run_auth_middleware(state, WorkflowType.VIEW_CART, config)
+    
+    # If auth failed, return early with auth error
+    if not auth_state.get("is_authenticated", False):
+        return auth_state
+    
+    # If auth passed, run the actual view cart workflow
+    return await run_view_cart(auth_state, config)
 
 
 async def run_auth_protected_place_order(state: GlobalState, config=None) -> GlobalState:
@@ -122,6 +134,7 @@ async def create_base_graph():
     # Auth-protected workflows
     graph.add_node(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, run_auth_protected_place_order)
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, run_auth_protected_add_to_cart)
+    graph.add_node(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, run_auth_protected_view_cart)
     # Route to different workflows based on orchestrator's decision
     graph.add_conditional_edges(
         NodeName.ORCHESTRATOR_NODE,
@@ -131,6 +144,7 @@ async def create_base_graph():
             WorkflowType.PRODUCT_SEARCH: NodeName.PRODUCT_SEARCH_WORKFLOW,
             WorkflowType.PLACE_ORDER: NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
             WorkflowType.ADD_TO_CART: NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW,
+            WorkflowType.VIEW_CART: NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW,
             # Auth-protected payment workflows
             WorkflowType.INITIATE_PAYMENT: NodeName.INITIATE_PAYMENT_WORKFLOW,
             WorkflowType.PAYMENT_STATUS: NodeName.PAYMENT_STATUS_WORKFLOW,

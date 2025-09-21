@@ -17,3 +17,14 @@ export type AddToCartSuccess = {
   cart_details: CartItem[];
   suggested_actions: unknown;
 };
+
+export type CartDetails = {
+  success_message: string;
+  cart_details: CartItem[];
+  cart_summary: {
+    item_count: number;
+    total_items: number;
+    total_value: number;
+  };
+  suggested_actions: unknown;
+};

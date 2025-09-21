@@ -27,6 +27,7 @@ def map_intent_to_workflow(intent: str, confidence: float) -> str:
         "generate_signup_form": "generate_signup_form",
         "signup_with_details": "signup_with_details",
         "add_to_cart": "add_to_cart",
+        "view_cart": "view_cart",
         "unknown": "fallback",
     }
     return mapping.get(intent, "fallback")

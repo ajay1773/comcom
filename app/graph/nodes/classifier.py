@@ -29,7 +29,8 @@ DISFLUENCY_MAP = {
     "generate_signin_form": "Processing your signin request...",
     "login_with_credentials": "Processing your login request...",
     "generate_signup_form": "Processing your signup request...",
-    "signup_with_details": "Creating your account..."
+    "signup_with_details": "Creating your account...",
+    "view_cart": "Retrieving your cart details..."
 }
 
 parser = PydanticOutputParser(pydantic_object=IntentClassification)
@@ -87,6 +88,16 @@ async def classifier_node(state: GlobalState) -> GlobalState:
           * User explicitly says "add to cart", "add to my cart", "put in my cart", "add item"
           PRIORITY RULE: This intent OVERRIDES product_search, place_order, or any other intent
           whenever such phrases are present in the user message.
+
+        - view_cart: For viewing or checking the cart contents. Use when:
+          * User wants to see what's in their cart
+          * User uses phrases like "show my cart", "view cart", "what's in my cart", "check cart"
+          * User wants to review cart items before checkout
+          Examples:
+            * "Show me my cart"
+            * "What's in my cart?"
+            * "Let me see my cart contents"
+            * "View cart"
 
         - product_search: ONLY for when the user is **browsing, discovering, or asking about product availability/categories**.
         Examples:
@@ -180,6 +191,7 @@ async def classifier_node(state: GlobalState) -> GlobalState:
         - If user wants to make a payment with credit card details → payment_status
         - If user explicitly says "add to cart" or any variation (e.g. "add this", "put in my cart", "add item to cart") → ALWAYS choose add_to_cart
         - Even if the product is mentioned, if the action is "add to cart", do not classify as product_search.
+        - If user wants to view or check cart contents (e.g. "show my cart", "view cart", "what's in my cart") → ALWAYS choose view_cart
 
 
         CRITICAL RULES FOR LOGIN INTENTS:
@@ -229,11 +241,12 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             - If intent = generate_signup_form → "Processing your signup request..."
             - If intent = signup_with_details → "Creating your account..."
             - If intent = add_to_cart → "Adding your product to cart..."
+            - If intent = view_cart → "Retrieving your cart details..."
         3. Provide a confidence score between 0.0 and 1.0 indicating how certain you are about the intent classification.
 
         Output format:
         Return **only valid JSON** with the following fields:
-        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details]
+        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart]
         - `confidence`: float between 0.0 and 1.0
         - `disfluent_message`: string
 

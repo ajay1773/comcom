@@ -53,6 +53,8 @@ class CartItem(BaseModel):
     added_at: str
     updated_at: str
 
+class CartItemWithProductDetails(CartItem):
+    product_details: Product | None
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int

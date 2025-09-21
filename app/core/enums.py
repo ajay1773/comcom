@@ -3,10 +3,10 @@
 from enum import Enum
 from typing import Literal
 
-TypeWorkflowType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart"]
-TypeNodeName = Literal["classifier_node", "orchestrator_node", "output_handler", "error_handler", "product_search_workflow", "place_order_workflow", "initiate_payment_workflow", "payment_status_workflow", "fallback_workflow", "generate_signin_form_workflow", "login_with_credentials_workflow", "generate_signup_form_workflow", "signup_with_details_workflow", "auth_middleware_workflow", "auth_protected_product_search_workflow", "auth_protected_place_order_workflow", "extract_params", "product_lookup", "extract_product_details", "get_selected_product", "prepare_order_details", "generate_payment", "make_payment", "handle_fallback", "send_login_form", "extract_login_credentials", "login_with_credentials", "parse_token", "handle_valid_token", "handle_invalid_token", "add_to_cart_workflow", "handle_success", "handle_failure"]
+TypeWorkflowType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart", "view_cart"]
+TypeNodeName = Literal["classifier_node", "orchestrator_node", "output_handler", "error_handler", "product_search_workflow", "place_order_workflow", "initiate_payment_workflow", "payment_status_workflow", "fallback_workflow", "generate_signin_form_workflow", "login_with_credentials_workflow", "generate_signup_form_workflow", "signup_with_details_workflow", "auth_middleware_workflow", "auth_protected_product_search_workflow", "auth_protected_place_order_workflow", "extract_params", "product_lookup", "extract_product_details", "get_selected_product", "prepare_order_details", "generate_payment", "make_payment", "handle_fallback", "send_login_form", "extract_login_credentials", "login_with_credentials", "parse_token", "handle_valid_token", "handle_invalid_token", "add_to_cart_workflow", "view_cart_workflow", "handle_success", "handle_failure", "get_cart_details", "handle_view_cart_success", "handle_view_cart_fail"]
 TypeTemplateType = Literal["send_login_form", "login_with_credentials", "send_signup_form", "signup_with_details", "product_search_results", "order_confirmation", "order_details", "initiate_payment", "payment_form", "payment_status_details", "payment_success", "payment_failed", "error_message", "fallback_response", "auth_success", "auth_error"]
-TypeIntentType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart"]
+TypeIntentType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart", "view_cart"]
 TypeWorkflowStateKey = Literal["user_message", "intent", "conversation_history", "user_profile", "response", "user_id", "session_token", "is_authenticated", "auth_required", "pending_workflow", "thread_id", "current_workflow", "workflow_states", "workflow_history", "confidence", "disfluent_message", "workflow_output_text", "workflow_output_json", "workflow_error", "error_recovery_options"]
 TypeError = Literal["validation_error", "authentication_error", "network_error", "database_error", "workflow_error", "unknown_error"]
 TypeDatabaseTable = Literal["users", "products", "orders", "order_items", "payments", "sessions"]
@@ -30,6 +30,7 @@ class WorkflowType(str, Enum):
     SIGNUP_WITH_DETAILS = "signup_with_details"
     AUTH_MIDDLEWARE = "auth_middleware"
     ADD_TO_CART = "add_to_cart"
+    VIEW_CART = "view_cart"
 
 class NodeName(str, Enum):
     """Enum for node names."""
@@ -52,10 +53,12 @@ class NodeName(str, Enum):
     SIGNUP_WITH_DETAILS_WORKFLOW = "signup_with_details_workflow"
     AUTH_MIDDLEWARE_WORKFLOW = "auth_middleware_workflow"
     ADD_TO_CART_WORKFLOW = "add_to_cart_workflow"
+    VIEW_CART_WORKFLOW = "view_cart_workflow"
     # Auth-protected workflow nodes
     AUTH_PROTECTED_PRODUCT_SEARCH_WORKFLOW = "auth_protected_product_search_workflow"
     AUTH_PROTECTED_PLACE_ORDER_WORKFLOW = "auth_protected_place_order_workflow"
     AUTH_PROTECTED_ADD_TO_CART_WORKFLOW = "auth_protected_add_to_cart_workflow"
+    AUTH_PROTECTED_VIEW_CART_WORKFLOW = "auth_protected_view_cart_workflow"
     # Product search nodes
     EXTRACT_PARAMS = "extract_params"
     PRODUCT_LOOKUP = "product_lookup"
@@ -94,6 +97,11 @@ class NodeName(str, Enum):
     ADD_PRODUCT_TO_CART = "add_product_to_cart"
     HANDLE_SUCCESS = "handle_success"
     HANDLE_FAILURE = "handle_failure"
+
+    # View cart nodes
+    GET_CART_DETAILS = "get_cart_details"
+    HANDLE_VIEW_CART_SUCCESS = "handle_view_cart_success"
+    HANDLE_VIEW_CART_FAIL = "handle_view_cart_fail"
     
 class TemplateType(str, Enum):
     """Enum for template types."""
@@ -127,6 +135,7 @@ class IntentType(str, Enum):
     GENERATE_SIGNIN_FORM = "generate_signin_form"
     LOGIN_WITH_CREDENTIALS = "login_with_credentials"
     FALLBACK = "fallback"
+    VIEW_CART = "view_cart"
 
 
 class WorkflowStateKey(str, Enum):

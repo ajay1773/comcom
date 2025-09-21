@@ -59,7 +59,7 @@ async def handle_success_node(state: AddToCartState) -> AddToCartState:
     
     # Set success response in workflow widget
     state["workflow_widget_json"] = {
-        "template": "add_to_card_success",
+        "template": "add_to_cart_success",
         "payload": {
             "success_message": success_message,
             "cart_details": cart_details,

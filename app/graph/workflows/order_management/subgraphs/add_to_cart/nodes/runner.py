@@ -28,5 +28,6 @@ async def run_add_to_cart(state: GlobalState, config: RunnableConfig | None = No
     updated_sub_state = cast(AddToCartState, await subgraph.ainvoke(sub_state))
     # 4. merge back into global
     state["add_to_cart"] = updated_sub_state
+    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", None)
 
     return state

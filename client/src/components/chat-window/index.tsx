@@ -12,7 +12,6 @@ import UserMessage from "../user-message";
 import AssistantMessage from "../assistant-message";
 import PaymentForm from "@/features/place-order/views/payment-form";
 import PaymentStatus from "@/features/place-order/views/payment-status";
-import ProductsList from "../../features/product-search/views/products-list";
 import OrderDetails from "@/features/place-order/views/order-details";
 import type { Product } from "@/features/product-search/types";
 import type { OrderDetails as OrderDetailsType } from "@/features/place-order/types";
@@ -25,6 +24,8 @@ import SigninSuccess from "@/features/signin/views/signin-success";
 import AddToCartSuccess from "@/features/cart-management/views/add-to-cart-success";
 import type { AddToCartSuccess as AddToCartSuccessType } from "@/features/cart-management/types";
 import ProductWindow from "@/features/product-search/views/product-window";
+import CartDetails from "@/features/cart-management/views/cart-details";
+import type { CartDetails as CartDetailsType } from "@/features/cart-management/types";
 
 const ChatWindow = () => {
   const { messages, error, sendMessage, widgetJson } = useChat();
@@ -60,8 +61,10 @@ const ChatWindow = () => {
         return <SignupForm />;
       case "login_success":
         return <SigninSuccess details={payload as SigninSuccessType} />;
-      case "add_to_card_success":
+      case "add_to_cart_success":
         return <AddToCartSuccess details={payload as AddToCartSuccessType} />;
+      case "cart_details":
+        return <CartDetails details={payload as CartDetailsType} />;
       default:
         return <></>;
     }

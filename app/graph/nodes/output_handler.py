@@ -44,6 +44,7 @@ async def output_handler_node(
         - If JSON contains "template": "login_with_credentials" → respond like: "Welcome back! 🎉 You're successfully signed in."
         - If JSON contains "template": "send_signup_form" → respond like: "Here is the signup form 📝 Please fill in your details to create an account."
         - If JSON contains "template": "signup_with_details" → respond like: "Welcome! 🎉 Your account has been created successfully."
+        - If JSON contains "template": "cart_details" → respond like: "Here's what's in your cart 🛒 Let me show you your items."
         - If JSON is empty, null, or just {{}} / [] → respond like: "Sorry 😔 No product found or order could not be placed."
 
         Response Rules:

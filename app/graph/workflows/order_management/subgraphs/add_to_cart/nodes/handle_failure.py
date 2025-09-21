@@ -20,11 +20,9 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
         
         Guidelines:
         - Be understanding and apologetic
-        - Acknowledge what they were trying to do
         - Explain the issue in simple, non-technical terms
-        - Provide clear next steps to resolve the problem
-        - Keep the tone positive and solution-focused
         - Avoid technical jargon
+        - Keep the message short and concise
         
         Context:
         - Product they tried to add: {product_name} by {brand}
@@ -32,10 +30,11 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
         - Technical error: {error_message}
         
         Common issues and appropriate responses:
-        - Authentication required: Guide them to sign in
+        - Authentication required: Guide them to sign in or create an account
         - Product not found: Suggest searching again or browsing
         - Missing information: Ask for more details
         - System errors: Apologize and suggest trying again
+        - Other errors: Apologize and suggest trying again
         """),
         ("user", """Please generate a helpful response for this add-to-cart failure that will guide the user to resolve the issue.""")
     ])

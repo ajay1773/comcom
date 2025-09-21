@@ -1,5 +1,5 @@
 from typing import List, Optional
-from app.services.db.db import db_service, UserCart, CartItem, CartItemCreate
+from app.services.db.db import CartItemWithProductDetails, db_service, UserCart, CartItem, CartItemCreate
 from datetime import datetime, timedelta
 
 
@@ -106,7 +106,7 @@ class CartService:
         
         # Update cart totals
         await self._update_cart_totals(cart.id)
-        
+
         return CartItem(
             id=row[0],
             cart_id=row[1],
@@ -118,8 +118,8 @@ class CartService:
             color=row[7],
             unit=row[8],
             selected_options=row[9],
-            added_at=row[10],
-            updated_at=row[11]
+            added_at=row[10] or "1970-01-01 00:00:00",  # Default if None
+            updated_at=row[11] or "1970-01-01 00:00:00"  # Default if None
         )
     
     async def get_cart_items(self, user_id: int) -> List[CartItem]:
@@ -142,10 +142,10 @@ class CartService:
                 total_price=row[5],
                 size=row[6],
                 color=row[7],
-                selected_options=row[8],
-                added_at=row[9],
-                updated_at=row[10],
-                unit=row[11]
+                unit=row[8],
+                selected_options=row[9],
+                added_at=row[10] or "1970-01-01 00:00:00",  # Default if None
+                updated_at=row[11] or "1970-01-01 00:00:00"  # Default if None
             )
             for row in result
         ]
@@ -153,25 +153,27 @@ class CartService:
     async def update_item_quantity(self, user_id: int, item_id: int, new_quantity: int) -> Optional[CartItem]:
         """Update quantity of an item in the cart."""
         if new_quantity <= 0:
-            return await self.remove_item_from_cart(user_id, item_id)
-        
+            # Remove item and return None since item was deleted
+            await self.remove_item_from_cart(user_id, item_id)
+            return None
+
         cart = await self.get_or_create_cart(user_id)
-        
+
         # Update item quantity and total price
         result = await self.db_service.execute_query(
-            """UPDATE cart_items 
+            """UPDATE cart_items
                SET quantity = ?, total_price = unit_price * ?, updated_at = CURRENT_TIMESTAMP
                WHERE id = ? AND cart_id = ?
                RETURNING id, cart_id, product_id, quantity, unit_price, total_price, size, color, unit, selected_options, added_at, updated_at""",
             (new_quantity, new_quantity, item_id, cart.id)
         )
-        
+
         if not result:
             return None
-        
+
         # Update cart totals
         await self._update_cart_totals(cart.id)
-        
+
         row = result[0]
         return CartItem(
             id=row[0],
@@ -184,22 +186,23 @@ class CartService:
             color=row[7],
             unit=row[8],
             selected_options=row[9],
-            added_at=row[10],
-            updated_at=row[11]
+            added_at=row[10] or "1970-01-01 00:00:00",  # Default if None
+            updated_at=row[11] or "1970-01-01 00:00:00"  # Default if None
         )
     
     async def remove_item_from_cart(self, user_id: int, item_id: int) -> bool:
         """Remove an item from the cart."""
         cart = await self.get_or_create_cart(user_id)
-        
-        result = await self.db_service.execute_query(
+
+        # Delete the item
+        await self.db_service.execute_query(
             "DELETE FROM cart_items WHERE id = ? AND cart_id = ?",
             (item_id, cart.id)
         )
-        
+
         # Update cart totals
         await self._update_cart_totals(cart.id)
-        
+
         return True
     
     async def clear_cart(self, user_id: int) -> bool:
@@ -270,6 +273,36 @@ class CartService:
                 "UPDATE user_carts SET total_amount = ?, total_items = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 (total_amount, total_items, cart_id)
             )
+
+    async def get_cart_items_with_product_details(self, user_id: int) -> List[CartItem]:
+        """Get cart items with product details."""
+        try:
+            cart = await self.get_or_create_cart(user_id)
+            result = await self.db_service.execute_query(
+                "SELECT id, cart_id, product_id, quantity, unit_price, total_price, size, color, unit, selected_options, added_at, updated_at FROM cart_items WHERE cart_id = ? JOIN products ON cart_items.product_id = products.id",
+                (cart.id,)
+            )
+            return [
+                CartItemWithProductDetails(
+                    id=row[0],
+                    cart_id=row[1],
+                    product_id=row[2],
+                    quantity=row[3],
+                    unit_price=row[4],
+                    total_price=row[5],
+                    size=row[6],
+                    color=row[7],
+                    unit=row[8],
+                    selected_options=row[9],
+                    added_at=row[10] or "1970-01-01 00:00:00",  # Default if None
+                    updated_at=row[11] or "1970-01-01 00:00:00",  # Default if None
+                    product_details=row[12]
+                )
+                for row in result
+            ]
+        except Exception as e:
+            print(f"Error in get_cart_items_with_product_details: {e}")
+            return []
 
 
 # Global instance

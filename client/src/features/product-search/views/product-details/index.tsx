@@ -104,7 +104,7 @@ const ProductDetails = ({ product }: ProductDetailsProps) => {
     [sendMessage]
   );
   return (
-    <Card className="p-5 gap-4">
+    <Card className="p-5 gap-4 mt-10">
       <img
         className="w-full object-cover rounded-xl"
         src={product?.images?.full || ""}
@@ -153,7 +153,7 @@ const ProductDetails = ({ product }: ProductDetailsProps) => {
       </CardContent>
       <CardFooter className="flex items-center gap-4 justify-between w-full p-0 mt-2">
         <Button
-          className="w-1/2"
+          className="flex-1/2"
           variant={"outline"}
           onClick={() => {
             const sizeText = selectedSize ? ` in size ${selectedSize}` : "";
@@ -164,7 +164,7 @@ const ProductDetails = ({ product }: ProductDetailsProps) => {
           Add to Cart
         </Button>
         <Button
-          className="w-1/2"
+          className="flex-1/2"
           variant={"default"}
           onClick={() => {
             const sizeText = selectedSize ? ` in size ${selectedSize}` : "";

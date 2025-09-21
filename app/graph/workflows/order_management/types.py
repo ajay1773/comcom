@@ -3,6 +3,7 @@
 
 from typing import Dict, Any, List
 from app.types.common import AuthState, CommonState
+from app.services.db.db import CartItem
 
 
 class AddToCartState(CommonState, AuthState):
@@ -10,4 +11,10 @@ class AddToCartState(CommonState, AuthState):
     quantity: int
     operation_success: bool
     error_message: str
-    cart_details: List[Dict[str, Any]]
+    cart_details: List[CartItem]
+
+class ViewCartState(CommonState, AuthState):
+    cart_details: List[CartItem]
+    workflow_output_text: str | None
+    workflow_output_json: Dict[str, Any] | None
+    error_message: str | None

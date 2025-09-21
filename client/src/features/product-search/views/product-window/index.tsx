@@ -19,8 +19,12 @@ const ProductWindow: FC<ProductWindowProps> = ({ products }) => {
   return (
     <div className="w-full h-full">
       {selectedProduct ? (
-        <div className="flex w-full h-full flex-col items-start justify-start gap-4">
-          <Button variant={"ghost"} onClick={() => setSelectedProduct(null)}>
+        <div className="flex w-full h-full flex-col items-start justify-start gap-4 overflow-y-auto">
+          <Button
+            variant={"ghost"}
+            onClick={() => setSelectedProduct(null)}
+            className="absolute"
+          >
             <LuArrowLeft /> Back
           </Button>
           <ProductDetails product={selectedProduct} />
