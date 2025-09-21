@@ -1,0 +1,47 @@
+[project]
+name = "comcom"
+version = "0.1.0"
+description = "A simple chat API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.27.1",
+    "pydantic>=2.6.3",
+    "langchain-ollama>=0.3.7",
+    "langgraph>=0.6.0",
+    "langgraph-checkpoint-sqlite>=2.0.11",
+    "aiosqlite>=0.21.0",
+    "faker>=22.7.0",
+    "bcrypt>=4.3.0",
+    "PyJWT>=2.8.0",
+    "python-dotenv>=1.0.0",
+    "langchain-groq>=0.3.8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "pylsp-mypy>=0.7.0",
+    "pyright>=1.1.405",
+    "pytest>=8.4.1",
+    "ruff>=0.12.10",
+]
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "pytest>=8.0.2",
+    "black>=24.2.0",
+    "ruff>=0.2.2",
+]

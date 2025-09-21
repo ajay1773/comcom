@@ -1,0 +1,24 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "words": [
+        "dotenv",
+        "pydantic",
+        "fastapi",
+        "uvicorn",
+        "langgraph",
+        "langchain",
+        "ollama",
+        "aiosqlite",
+        "bcrypt",
+        "pyjwt",
+        "pyproject",
+        "toml"
+    ],
+    "ignorePaths": [
+        "node_modules/**",
+        ".venv/**",
+        "**/*.pyc",
+        "**/__pycache__/**"
+    ]
+}

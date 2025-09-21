@@ -1,0 +1,55 @@
+.form-card {
+    border: none;
+    padding-top: 60px;
+    position: relative;
+}
+
+.form-m {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 70px;
+    height: 70px;
+    background-color: #111111;
+    border-radius: 0 0 0 12px;
+    z-index: 1;
+}
+
+.form-m:after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    aspect-ratio: 1;
+    background-color: red;
+    bottom: -20px;
+    right: 0px;
+    border-radius: 0 12px 0 0;
+}
+
+.form-m:before {
+    content: "";
+    position: absolute;
+    width: 20px;
+    aspect-ratio: 1;
+    background: radial-gradient(circle 24px at top left, #0000 98%, #FFF) top left;
+    top: 0px;
+    left: -20px;
+    border-radius: 0 12px 0 0;
+    box-shadow: .375rem .375rem #111111;
+}
+
+.form-card-icon {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    aspect-ratio: 1/1;
+    border-radius: 0 0 0 12px;
+    background-color: var(--color-blue-500);
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 10px solid #111111;
+    z-index: 2;
+}
