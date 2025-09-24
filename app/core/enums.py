@@ -3,10 +3,10 @@
 from enum import Enum
 from typing import Literal
 
-TypeWorkflowType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address"]
+TypeWorkflowType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart"]
 TypeNodeName = Literal["classifier_node", "orchestrator_node", "output_handler", "error_handler", "product_search_workflow", "place_order_workflow", "initiate_payment_workflow", "payment_status_workflow", "fallback_workflow", "generate_signin_form_workflow", "login_with_credentials_workflow", "generate_signup_form_workflow", "signup_with_details_workflow", "auth_middleware_workflow", "auth_protected_product_search_workflow", "auth_protected_place_order_workflow", "extract_params", "product_lookup", "extract_product_details", "get_selected_product", "prepare_order_details", "generate_payment", "make_payment", "handle_fallback", "send_login_form", "extract_login_credentials", "login_with_credentials", "parse_token", "handle_valid_token", "handle_invalid_token", "add_to_cart_workflow", "view_cart_workflow", "handle_success", "handle_failure", "get_cart_details", "handle_view_cart_success", "handle_view_cart_fail", "extract_address_details", "save_address_details", "handle_address_save_success", "handle_address_save_failure", "auth_protected_add_address_form_workflow", "auth_protected_edit_address_workflow", "auth_protected_delete_address_workflow"]
 TypeTemplateType = Literal["send_login_form", "login_with_credentials", "send_signup_form", "signup_with_details", "product_search_results", "order_confirmation", "order_details", "initiate_payment", "payment_form", "payment_status_details", "payment_success", "payment_failed", "error_message", "fallback_response", "auth_success", "auth_error", "send_add_address_form"]
-TypeIntentType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address"]
+TypeIntentType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart"]
 TypeWorkflowStateKey = Literal["user_message", "intent", "conversation_history", "user_profile", "response", "user_id", "session_token", "is_authenticated", "auth_required", "pending_workflow", "thread_id", "current_workflow", "workflow_states", "workflow_history", "confidence", "disfluent_message", "workflow_output_text", "workflow_output_json", "workflow_error", "error_recovery_options"]
 TypeError = Literal["validation_error", "authentication_error", "network_error", "database_error", "workflow_error", "unknown_error"]
 TypeDatabaseTable = Literal["users", "products", "orders", "order_items", "payments", "sessions"]
@@ -36,6 +36,7 @@ class WorkflowType(str, Enum):
     ADD_ADDRESS_FORM = "add_address_form"
     EDIT_ADDRESS = "edit_address"
     DELETE_ADDRESS = "delete_address"
+    DELETE_FROM_CART = "delete_from_cart"
 
 class NodeName(str, Enum):
     """Enum for node names."""
@@ -69,6 +70,7 @@ class NodeName(str, Enum):
     AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW = "auth_protected_add_address_form_workflow"
     AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW = "auth_protected_edit_address_workflow"
     AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW = "auth_protected_delete_address_workflow"
+    AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW = "auth_protected_delete_from_cart_workflow"
     # Product search nodes
     EXTRACT_PARAMS = "extract_params"
     PRODUCT_LOOKUP = "product_lookup"
@@ -107,6 +109,9 @@ class NodeName(str, Enum):
     ADD_PRODUCT_TO_CART = "add_product_to_cart"
     HANDLE_SUCCESS = "handle_success"
     HANDLE_FAILURE = "handle_failure"
+
+    # Delete from cart nodes
+    DELETE_PRODUCT_FROM_CART = "delete_product_from_cart"
 
     # View cart nodes
     GET_CART_DETAILS = "get_cart_details"

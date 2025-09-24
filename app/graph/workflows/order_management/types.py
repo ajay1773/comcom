@@ -18,3 +18,11 @@ class ViewCartState(CommonState, AuthState):
     workflow_output_text: str | None
     workflow_output_json: Dict[str, Any] | None
     error_message: str | None
+
+
+class DeleteFromCartState(CommonState, AuthState):
+    product_details: Dict[str, Any]
+    workflow_output_text: str | None
+    workflow_output_json: Dict[str, Any] | None
+    error_message: str | None
+    cart_delete_success: bool

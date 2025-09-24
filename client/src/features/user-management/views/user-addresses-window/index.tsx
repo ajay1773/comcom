@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,16 +8,27 @@ import type { UserAddress } from "../../types";
 import { Edit, Plus, ArrowLeft, Trash } from "lucide-react";
 import AddressForm from "../address-form";
 import { useChat } from "@/store/chat-store";
+import { toast } from "sonner";
+import { get } from "lodash";
 
 interface UserAddressesWindowProps {
-  data: { addresses: UserAddress[]; suggested_actions: string[] };
+  data: {
+    message: { text: string; type: string };
+    addresses: UserAddress[];
+    suggested_actions: string[];
+  };
   onAddressUpdate?: (addresses: UserAddress[]) => void;
 }
 
 const UserAddressesWindow: React.FC<UserAddressesWindowProps> = ({
-  data = { addresses: [], suggested_actions: [] },
+  data = {
+    addresses: [],
+    suggested_actions: [],
+  },
   onAddressUpdate,
 }) => {
+  const message = get(data, "message.text", "");
+  const messageType = get(data, "message.type", "");
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(
     null
@@ -74,6 +85,7 @@ const UserAddressesWindow: React.FC<UserAddressesWindowProps> = ({
     - State: ${formData.state}
     - ZIP Code: ${formData.zip_code}
     - Country: ${formData.country}
+    - Is This the Default Address: ${formData.is_default ? "Yes" : "No"}
     `;
 
     await sendMessage(message);
@@ -81,6 +93,15 @@ const UserAddressesWindow: React.FC<UserAddressesWindowProps> = ({
     onAddressUpdate?.(updatedAddresses);
     handleBackToList();
   };
+
+  useEffect(() => {
+    if (messageType === "success") {
+      toast.success(message, {
+        duration: 3000,
+        position: "top-center",
+      });
+    }
+  }, [data, messageType, message]);
 
   if (showForm) {
     return (
@@ -90,7 +111,7 @@ const UserAddressesWindow: React.FC<UserAddressesWindowProps> = ({
             variant="ghost"
             size="icon"
             onClick={handleBackToList}
-            className="absolute left-0 top-0"
+            className=""
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>

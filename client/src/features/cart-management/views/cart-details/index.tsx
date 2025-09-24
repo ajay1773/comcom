@@ -6,15 +6,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { CartDetails as CartDetailsType } from "../../types";
+import type {
+  CartDetails as CartDetailsType,
+  CartItemWithProductDetails,
+} from "../../types";
 import { get } from "lodash";
 import { Button } from "@/components/ui/button";
+import { Trash } from "lucide-react";
+import { useChat } from "@/store/chat-store";
 
 type CartDetailsProps = {
   details: CartDetailsType;
 };
 
 const CartDetails: FC<CartDetailsProps> = ({ details }) => {
+  const { sendMessage } = useChat();
+
+  const handleDeleteFromCart = async (item: CartItemWithProductDetails) => {
+    const message = `I would like to delete the item ${item.product_details.name} by ${item.product_details.brand} from my cart`;
+    await sendMessage(message);
+  };
+
   return (
     <div>
       <Card>
@@ -46,14 +58,27 @@ const CartDetails: FC<CartDetailsProps> = ({ details }) => {
                       </div>
                     </div>
 
-                    <div className="flex gap-1 flex-col items-end">
-                      <p className="text-md font-medium">
-                        ${get(item, "product_details.price", "")} x{" "}
-                        {get(item, "quantity", "")}
-                      </p>
-                      <p className="text-sm font-light">
-                        ${get(item, "total_price", "")}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-1 flex-col items-end">
+                        <p className="text-md font-medium">
+                          ${get(item, "product_details.price", "")} x{" "}
+                          {get(item, "quantity", "")}
+                        </p>
+                        <p className="text-sm font-light">
+                          ${get(item, "total_price", "")}
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-destructive/10 hover:bg-destructive/20 text-destructive hover:text-destructive active:scale-95 transition-all duration-100"
+                        onClick={() => {
+                          handleDeleteFromCart(item);
+                        }}
+                      >
+                        <Trash className="size-4" />
+                      </Button>
                     </div>
                   </div>
                 );

@@ -85,10 +85,6 @@ async def handle_addresses_fetch_success_node(state: UserAddressesState) -> User
     state["workflow_widget_json"] = {
         "template": "user_addresses",
         "payload": {
-            "message": {
-                "text": "Your addresses have been successfully fetched.",
-                "type": "success"
-            },
             "addresses": addresses_dict,
         }
     }

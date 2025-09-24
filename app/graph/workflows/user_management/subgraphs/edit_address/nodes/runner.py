@@ -45,8 +45,4 @@ async def run_edit_address(state: GlobalState, config: RunnableConfig | None = N
     state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", {})
     state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
     
-    # Set error if address edit failed
-    if updated_sub_state.get("error_message"):
-        state["workflow_error"] = updated_sub_state.get("error_message", None)
-    
     return state

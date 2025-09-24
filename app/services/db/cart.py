@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from app.services.db.db import CartItemWithProductDetails, db_service, UserCart, CartItem, CartItemCreate, Product
 from datetime import datetime, timedelta
 
@@ -154,7 +154,7 @@ class CartService:
         """Update quantity of an item in the cart."""
         if new_quantity <= 0:
             # Remove item and return None since item was deleted
-            await self.remove_item_from_cart(user_id, item_id)
+            await self.remove_item_from_cart_by_id(user_id, item_id)
             return None
 
         cart = await self.get_or_create_cart(user_id)
@@ -190,7 +190,7 @@ class CartService:
             updated_at=row[11] or "1970-01-01 00:00:00"  # Default if None
         )
     
-    async def remove_item_from_cart(self, user_id: int, item_id: int) -> bool:
+    async def remove_item_from_cart_by_id(self, user_id: int, item_id: int) -> bool:
         """Remove an item from the cart."""
         cart = await self.get_or_create_cart(user_id)
 
@@ -274,7 +274,7 @@ class CartService:
                 (total_amount, total_items, cart_id)
             )
 
-    async def get_cart_items_with_product_details(self, user_id: int) -> List[CartItem]:
+    async def get_cart_items_with_product_details(self, user_id: int) -> List[CartItemWithProductDetails]:
         """Get cart items with product details."""
         try:
             cart = await self.get_or_create_cart(user_id)

@@ -27,6 +27,7 @@ from app.graph.workflows.user_management.subgraphs.user_addresses.nodes.runner i
 from app.graph.workflows.user_management.subgraphs.add_address.nodes.runner import run_add_address
 from app.graph.workflows.user_management.subgraphs.edit_address.nodes.runner import run_edit_address
 from app.graph.workflows.user_management.subgraphs.delete_address.nodes.runner import run_delete_address
+from app.graph.workflows.order_management.subgraphs.delete_from_cart.nodes.runner import run_delete_from_cart
 
 
 
@@ -54,6 +55,15 @@ async def run_auth_protected_add_to_cart(state: GlobalState, config=None) -> Glo
         state=state,
         target_workflow=WorkflowType.ADD_TO_CART,
         workflow_runner=run_add_to_cart,
+        config=config
+    )
+
+async def run_auth_protected_delete_from_cart(state: GlobalState, config=None) -> GlobalState:
+    """Run delete from cart with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.DELETE_FROM_CART,
+        workflow_runner=run_delete_from_cart,
         config=config
     )
 
@@ -172,6 +182,7 @@ async def create_base_graph():
     graph.add_node(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, run_auth_protected_place_order)
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, run_auth_protected_add_to_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, run_auth_protected_view_cart)
+    graph.add_node(NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW, run_auth_protected_delete_from_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW, run_auth_protected_user_profile)
     graph.add_node(NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW, run_auth_protected_user_addresses)
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW, run_auth_protected_add_address)
@@ -187,6 +198,7 @@ async def create_base_graph():
             WorkflowType.PLACE_ORDER: NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
             WorkflowType.ADD_TO_CART: NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW,
             WorkflowType.VIEW_CART: NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW,
+            WorkflowType.DELETE_FROM_CART: NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW,
             WorkflowType.USER_PROFILE: NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW,
             WorkflowType.USER_ADDRESSES: NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW,
             WorkflowType.ADD_ADDRESS_FORM: NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW,

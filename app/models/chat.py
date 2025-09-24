@@ -7,7 +7,7 @@ from typing_extensions import TypedDict
 
 from app.graph.workflows.signup.types import GenerateSignupFormState, SignupWithDetailsState
 from app.graph.workflows.auth_middleware.types import AuthMiddlewareState
-from app.graph.workflows.order_management.types import AddToCartState, ViewCartState
+from app.graph.workflows.order_management.types import AddToCartState, DeleteFromCartState, ViewCartState
 
 
 
@@ -67,6 +67,7 @@ class GlobalState(TypedDict):
     auth_middleware: AuthMiddlewareState | None
     add_to_cart: AddToCartState | None
     view_cart: ViewCartState | None
+    delete_from_cart: DeleteFromCartState | None
 # ChatState removed - not used in the codebase
 
 

@@ -28,6 +28,7 @@ def map_intent_to_workflow(intent: str, confidence: float) -> str:
         "signup_with_details": "signup_with_details",
         "add_to_cart": "add_to_cart",
         "view_cart": "view_cart",
+        "delete_from_cart": "delete_from_cart",
         "user_profile": "user_profile",
         "user_addresses": "user_addresses",
         "add_address_form": "add_address_form",

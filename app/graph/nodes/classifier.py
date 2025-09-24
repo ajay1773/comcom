@@ -31,6 +31,7 @@ DISFLUENCY_MAP = {
     "generate_signup_form": "Processing your signup request...",
     "signup_with_details": "Creating your account...",
     "view_cart": "Retrieving your cart details...",
+    "delete_from_cart": "Removing your item from cart...",
     "user_profile": "Fetching your profile details...",
     "user_addresses": "Retrieving your saved addresses...",
     "add_address_form": "Saving your address...",
@@ -103,6 +104,15 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             * "What's in my cart?"
             * "Let me see my cart contents"
             * "View cart"
+
+        - delete_from_cart: For deleting an item from the cart. Use when:
+          * User wants to delete an item from the cart
+          * User uses phrases like "delete from cart", "remove from cart", "delete item from cart"
+          * User specifies item details to be deleted
+          Examples:
+            * "Delete the Blue Comfort T-shirt by Nike from my cart"
+            * "Remove the Red Sneakers from my cart"
+            * "Delete item from cart: Blue Comfort T-shirt by Nike"
 
         - user_profile: For viewing user profile details and account information. Use when:
           * User wants to see their profile information
