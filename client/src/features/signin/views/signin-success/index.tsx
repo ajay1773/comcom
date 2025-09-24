@@ -2,11 +2,14 @@ import StatusCard from "@/components/status-card";
 import { CheckCircleIcon } from "lucide-react";
 import type { SigninSuccess as SigninSuccessType } from "@/features/signin/types";
 import { useEffect } from "react";
+import { useChatStore } from "@/store/chat-store";
 
 const SigninSuccess = ({ details }: { details: SigninSuccessType }) => {
+  const { setUserDetails } = useChatStore();
   useEffect(() => {
+    setUserDetails(JSON.stringify(details.user));
     localStorage.setItem("jwt_token", details.jwt_token);
-  }, [details]);
+  }, [details, setUserDetails]);
 
   return (
     <div>

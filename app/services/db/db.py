@@ -177,7 +177,7 @@ class DatabaseService:
         CREATE TABLE IF NOT EXISTS user_addresses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
-            type TEXT NOT NULL CHECK(type IN ('billing', 'shipping')),
+            type TEXT NOT NULL CHECK(type IN ('home', 'work', 'other', 'billing', 'shipping')),
             street TEXT NOT NULL,
             city TEXT NOT NULL,
             state TEXT NOT NULL,
@@ -185,6 +185,7 @@ class DatabaseService:
             country TEXT DEFAULT 'US',
             is_default BOOLEAN DEFAULT FALSE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
         """

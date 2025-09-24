@@ -11,7 +11,7 @@ async def handle_valid_token_node(state: AuthMiddlewareState) -> AuthMiddlewareS
     target_workflow = state.get("target_workflow")
     
     # Update state to indicate successful authentication
-    state["workflow_widget_json"] = {}
+    # state["workflow_widget_json"] = {}
     # Set suggestions for continuing the workflow
     state["suggestions"] = [f"Authentication successful. Continuing with {target_workflow}."]
     

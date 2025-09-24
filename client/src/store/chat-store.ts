@@ -2,7 +2,6 @@ import { create } from "zustand";
 import type { ChatChunkResponse, Message, ToolStatus } from "../types/chat";
 import { EVENT_EMITTER_ADD_WORKFLOW_JSON } from "@/config";
 import emitter from "@/core/event-emitter";
-import { extractTemplatePayload } from "@/utils/extraction";
 
 interface ChatState {
   messages: Message[];
@@ -13,6 +12,12 @@ interface ChatState {
   toolStatus: ToolStatus | null;
   disfluencyMessage: string | null;
   widgetJson: { template: string; payload: unknown } | null;
+  userDetails: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  } | null;
 
   // Actions
   addMessage: (message: Message) => void;
@@ -36,6 +41,8 @@ interface ChatState {
   setToolStatus: (status: ToolStatus | null) => void;
   setDisfluencyMessage: (message: string) => void;
   setWidgetJson: (json: { template: string; payload: unknown }) => void;
+  setUserDetails: (details: string) => void;
+  logout: () => void;
 
   // Async Actions
   sendMessage: (content: string, apiBaseUrl?: string) => Promise<void>;
@@ -61,12 +68,26 @@ const initialState = {
   toolStatus: null,
   disfluencyMessage: null,
   widgetJson: null,
+  userDetails: localStorage.getItem("user_details")
+    ? JSON.parse(localStorage.getItem("user_details") || "{}")
+    : null,
 };
 
 export const useChatStore = create<ChatState>()((set, get) => ({
   ...initialState,
 
   // Actions
+
+  logout: () => {
+    localStorage.removeItem("user_details");
+    localStorage.removeItem("jwt_token");
+    set({ userDetails: null });
+  },
+  setUserDetails: (details) => {
+    localStorage.setItem("user_details", details);
+    const parsedDetails = JSON.parse(details);
+    set({ userDetails: parsedDetails });
+  },
   addMessage: (message) =>
     set((state) => ({
       messages: [...state.messages, message],
@@ -164,11 +185,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const assistantMessageCreated = true;
 
     try {
+      const token = localStorage.getItem("jwt_token") || "";
       const response = await fetch(`${apiBaseUrl}/api/chat/stream`, {
         method: "POST",
         headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("jwt_token") || ""}`,
         },
         body: JSON.stringify({ query: content, thread_id: store.threadId }),
       });
@@ -263,10 +285,15 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                 break;
 
               case "workflow_widget_json":
-                if (parsed.json) {
-                  const templatePayload = extractTemplatePayload(
-                    JSON.stringify(parsed.json)
-                  );
+                if (
+                  parsed.json &&
+                  parsed.json.template &&
+                  parsed.json.payload
+                ) {
+                  // const templatePayload = extractTemplatePayload(
+                  //   JSON.stringify(parsed.json)
+                  // );
+                  const templatePayload = parsed.json;
                   store.setWidgetJson(
                     templatePayload ?? { template: "", payload: {} }
                   );

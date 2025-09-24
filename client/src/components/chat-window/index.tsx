@@ -1,13 +1,12 @@
 import {
   LuBookmark,
+  LuCircleX,
   LuEllipsis,
   LuSquareArrowOutUpRight,
   LuStar,
 } from "react-icons/lu";
-
 import AutoResizeInput from "../auto-resize-input";
-import { useChat } from "../../store/chat-store";
-import { USER_IMAGE } from "../../config";
+import { useChat, useChatStore } from "../../store/chat-store";
 import UserMessage from "../user-message";
 import AssistantMessage from "../assistant-message";
 import PaymentForm from "@/features/place-order/views/payment-form";
@@ -26,11 +25,136 @@ import type { AddToCartSuccess as AddToCartSuccessType } from "@/features/cart-m
 import ProductWindow from "@/features/product-search/views/product-window";
 import CartDetails from "@/features/cart-management/views/cart-details";
 import type { CartDetails as CartDetailsType } from "@/features/cart-management/types";
+import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuShortcut,
+} from "@/components/ui/dropdown-menu";
+import UserProfile from "@/features/user-management/views/user-profile";
+import type {
+  UserAddress,
+  UserProfileData,
+} from "@/features/user-management/types";
+import UserAddressesWindow from "@/features/user-management/views/user-addresses-window";
+import { useRef, useEffect } from "react";
+
+const MoreOptionsDropdown = () => {
+  const { setWidgetJson, logout } = useChatStore();
+
+  const handleLogin = () => {
+    console.log("handleLogin");
+    setWidgetJson({
+      template: "send_login_form",
+      payload: {},
+    });
+  };
+
+  const isLoggedIn = () => {
+    return localStorage.getItem("jwt_token") !== null;
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="size-8">
+          <LuEllipsis className="size-[20px]" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="start">
+        <DropdownMenuLabel>More Options</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuItem>Share</DropdownMenuItem>
+          <DropdownMenuItem>Report</DropdownMenuItem>
+          <DropdownMenuItem className="text-red-300 hover:text-red-400 focus:text-red-400 active:text-red-400">
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => {
+            if (isLoggedIn()) {
+              logout();
+            } else {
+              handleLogin();
+            }
+          }}
+        >
+          {isLoggedIn() ? "Log out" : "Log in"}
+          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 const ChatWindow = () => {
-  const { messages, error, sendMessage, widgetJson } = useChat();
+  const {
+    messages,
+    error,
+    sendMessage,
+    widgetJson,
+    currentStreamingMessageId,
+  } = useChat();
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom function
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    // Try to scroll to last message first, fallback to container scroll
+    if (lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({
+        behavior,
+        block: "end",
+        inline: "nearest",
+      });
+    } else if (chatWindowRef.current) {
+      chatWindowRef.current.scrollTo({
+        top: chatWindowRef.current.scrollHeight,
+        behavior,
+      });
+    }
+  };
+
+  // Auto-scroll when messages change (new message added)
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length]);
+
+  // Auto-scroll when streaming message is updated
+  useEffect(() => {
+    if (currentStreamingMessageId) {
+      // Use a slight delay to ensure DOM has updated
+      const timeoutId = setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentStreamingMessageId, messages]);
+
+  // Auto-scroll when streaming message content changes
+  useEffect(() => {
+    if (currentStreamingMessageId) {
+      const streamingMessage = messages.find(
+        (msg) => msg.id === currentStreamingMessageId
+      );
+      if (streamingMessage?.content) {
+        // Use requestAnimationFrame for smoother scrolling during streaming
+        requestAnimationFrame(() => {
+          scrollToBottom();
+        });
+      }
+    }
+  }, [currentStreamingMessageId, messages]);
 
   const handleMessageSubmit = async (message: string) => {
+    // Immediate scroll when user sends message
+    scrollToBottom("instant");
     await sendMessage(message);
   };
 
@@ -59,12 +183,27 @@ const ChatWindow = () => {
         return <SigninForm />;
       case "send_signup_form":
         return <SignupForm />;
+      case "signup_success":
+        return <SigninForm />;
       case "login_success":
         return <SigninSuccess details={payload as SigninSuccessType} />;
       case "add_to_cart_success":
         return <AddToCartSuccess details={payload as AddToCartSuccessType} />;
       case "cart_details":
         return <CartDetails details={payload as CartDetailsType} />;
+      case "user_profile_details":
+        return <UserProfile data={payload as UserProfileData} />;
+      case "user_addresses":
+        return (
+          <UserAddressesWindow
+            data={
+              payload as {
+                addresses: UserAddress[];
+                suggested_actions: string[];
+              }
+            }
+          />
+        );
       default:
         return <></>;
     }
@@ -82,12 +221,13 @@ const ChatWindow = () => {
             <button className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group">
               <LuBookmark className="text-neutral-600 size-[20px] group-hover:text-white transition-all duration-300" />
             </button>
-            <button className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group">
-              <LuEllipsis className="text-neutral-600 size-[20px] group-hover:text-white transition-all duration-300" />
-            </button>
+            <MoreOptionsDropdown />
           </div>
         </div>
-        <div className="flex flex-col w-full flex-1 px-8 py-4 overflow-y-auto">
+        <div
+          className="flex flex-col w-full flex-1 px-8 py-4 overflow-y-auto"
+          ref={chatWindowRef}
+        >
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
               <p className="text-neutral-500 text-lg font-medium mb-2">
@@ -99,16 +239,41 @@ const ChatWindow = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {messages.map((message) => {
+              {messages.map((message, index) => {
+                const isLastMessage = index === messages.length - 1;
+                const isStreamingMessage =
+                  message.id === currentStreamingMessageId;
+
                 if (message.role === "tool") {
-                  return <p>{message.content}</p>;
+                  return (
+                    <div
+                      key={message.id}
+                      ref={isLastMessage ? lastMessageRef : null}
+                    >
+                      <p>{message.content}</p>
+                    </div>
+                  );
                 }
                 if (message.role === "user") {
-                  return <UserMessage key={message.id} message={message} />;
+                  return (
+                    <div
+                      key={message.id}
+                      ref={isLastMessage ? lastMessageRef : null}
+                      className={isStreamingMessage ? "scroll-mt-4" : ""}
+                    >
+                      <UserMessage message={message} />
+                    </div>
+                  );
                 }
                 if (message.role === "assistant") {
                   return (
-                    <AssistantMessage key={message.id} message={message} />
+                    <div
+                      key={message.id}
+                      ref={isLastMessage ? lastMessageRef : null}
+                      className={isStreamingMessage ? "scroll-mt-4" : ""}
+                    >
+                      <AssistantMessage message={message} />
+                    </div>
                   );
                 }
               })}
@@ -132,10 +297,16 @@ const ChatWindow = () => {
       </div>
 
       <div className="flex flex-col w-2/5 h-full bg-neutral-600/10 rounded-r-2xl">
-        <div className="flex items-center justify-center gap-10 border-b border-b-neutral-400/10 h-[68px]">
-          <LuSquareArrowOutUpRight className="text-neutral-600 size-[20px] ml-[52px]" />
+        <div className="flex items-center justify-between gap-10 border-b border-b-neutral-400/10 h-[68px]">
+          <Button variant="ghost" size="icon" className="size-8 ml-8">
+            <LuSquareArrowOutUpRight className="size-[20px]" />
+          </Button>
 
-          <div className="flex flex-col rounded-full size-[40px] relative">
+          <Button variant="ghost" size="icon" className="size-8 mr-8">
+            <LuCircleX className="size-[20px]" />
+          </Button>
+
+          {/* <div className="flex flex-col rounded-full size-[40px] relative">
             <img
               src={USER_IMAGE}
               alt="avatar"
@@ -144,11 +315,11 @@ const ChatWindow = () => {
             <span className="size-3 z-2 flex justify-center items-center rounded-full bg-[#1b1d1e] absolute bottom-0 right-0">
               <span className="size-2 rounded-full bg-green-500" />
             </span>
-          </div>
+          </div> */}
 
-          <button className="bg-white rounded-lg px-3 py-1 hover:bg-neutral-200 transition-all duration-300 active:bg-neutral-200 active:scale-95">
+          {/* <button className="bg-white rounded-lg px-3 py-1 hover:bg-neutral-200 transition-all duration-300 active:bg-neutral-200 active:scale-95">
             <span className="text-black text-sm font-semibold">Share</span>
-          </button>
+          </button> */}
         </div>
 
         <div className="flex flex-col w-full p-8 h-[calc(100%-68px)]">

@@ -1,7 +1,7 @@
 from typing import cast
 from fastapi import APIRouter, Request
 from app.models.chat import ChatRequest, ChatResponse
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from app.services.stream import stream_service
 from app.services.monitoring import monitoring_service
@@ -30,7 +30,7 @@ async def stream_chat(request: ChatRequest, http_request: Request
     try:
         if not request.query.strip():
             raise HTTPException(status_code=400, detail="Message cannot be empty")
-        token = cast(str, http_request.headers.get("Authorization")).split(" ")[1] if http_request.headers.get("Authorization") else None
+        token = cast(str, http_request.headers.get("Authorization")).split(" ")[1] if http_request.headers.get("Authorization") else ''
         return StreamingResponse(
             stream_service.stream_base_graph(
                 message=request.query, thread_id=request.thread_id or "", token=token

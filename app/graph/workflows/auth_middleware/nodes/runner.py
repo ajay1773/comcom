@@ -30,9 +30,16 @@ async def run_auth_middleware(state: GlobalState, target_workflow: str, config: 
         "target_workflow": target_workflow,
     })
 
-    # 2. Run the auth middleware subgraph
+    # 2. Run the auth middleware subgraph with metadata
     subgraph = AuthMiddlewareGraph.create()
-    updated_sub_state = cast(AuthMiddlewareState, await subgraph.ainvoke(sub_state, config))
+    
+    # Create config with metadata to identify this as auth middleware
+    auth_config = config.copy() if config else RunnableConfig()
+    auth_config.setdefault("metadata", {})["workflow_type"] = "auth_middleware"
+    auth_config.setdefault("metadata", {})["is_middleware"] = True
+    auth_config.setdefault("metadata", {})["target_workflow"] = target_workflow
+    
+    updated_sub_state = cast(AuthMiddlewareState, await subgraph.ainvoke(sub_state, auth_config))
     
     # 3. Merge auth results back into global state
     state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", {})

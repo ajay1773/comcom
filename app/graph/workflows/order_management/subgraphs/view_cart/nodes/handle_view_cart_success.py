@@ -33,7 +33,7 @@ async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
     ])
 
     try:
-        cart_details = state.get("cart_details", [])
+        cart_details = state.get("cart_details", []) or []
         user_query = state.get("search_query", "")
 
         # Calculate cart summary (works for both empty and populated carts)
@@ -41,7 +41,7 @@ async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
         total_items = sum(item.quantity for item in cart_details)
         total_value = sum(item.total_price for item in cart_details)
 
-        # Convert CartItem objects to dictionaries for JSON serialization
+        # Convert CartItemWithProductDetails objects to dictionaries for JSON serialization
         cart_details_dict = [
             {
                 "id": item.id,
@@ -55,7 +55,22 @@ async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
                 "unit": item.unit,
                 "selected_options": item.selected_options,
                 "added_at": item.added_at,
-                "updated_at": item.updated_at
+                "updated_at": item.updated_at,
+                "product_details": {
+                    "id": item.product_details.id if item.product_details else None,
+                    "name": item.product_details.name if item.product_details else None,
+                    "category": item.product_details.category if item.product_details else None,
+                    "price": item.product_details.price if item.product_details else None,
+                    "gender": item.product_details.gender if item.product_details else None,
+                    "brand": item.product_details.brand if item.product_details else None,
+                    "material": item.product_details.material if item.product_details else None,
+                    "style": item.product_details.style if item.product_details else None,
+                    "pattern": item.product_details.pattern if item.product_details else None,
+                    "color": item.product_details.color if item.product_details else None,
+                    "images": item.product_details.images if item.product_details else None,
+                    "available_sizes": item.product_details.available_sizes if item.product_details else None,
+                    "unit": item.product_details.unit if item.product_details else None
+                } if item.product_details else None
             }
             for item in cart_details
         ]

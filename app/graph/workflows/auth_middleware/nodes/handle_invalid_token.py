@@ -39,6 +39,6 @@ async def handle_invalid_token_node(state: AuthMiddlewareState) -> AuthMiddlewar
     
     # Update state with error information
     state["suggestions"] = [cast(str, error_message)]
-    state["workflow_widget_json"] = {}
+    # state["workflow_widget_json"] = {}
     
     return state

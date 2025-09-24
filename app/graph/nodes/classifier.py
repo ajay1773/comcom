@@ -30,7 +30,12 @@ DISFLUENCY_MAP = {
     "login_with_credentials": "Processing your login request...",
     "generate_signup_form": "Processing your signup request...",
     "signup_with_details": "Creating your account...",
-    "view_cart": "Retrieving your cart details..."
+    "view_cart": "Retrieving your cart details...",
+    "user_profile": "Fetching your profile details...",
+    "user_addresses": "Retrieving your saved addresses...",
+    "add_address_form": "Saving your address...",
+    "edit_address": "Updating your address...",
+    "delete_address": "Removing your address..."
 }
 
 parser = PydanticOutputParser(pydantic_object=IntentClassification)
@@ -98,6 +103,61 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             * "What's in my cart?"
             * "Let me see my cart contents"
             * "View cart"
+
+        - user_profile: For viewing user profile details and account information. Use when:
+          * User wants to see their profile information
+          * User uses phrases like "show my profile", "view profile", "my account", "profile details"
+          * User wants to see their personal information 
+          Examples:
+            * "Show me my profile"
+            * "View my account details"
+            * "What's my profile information?"
+            * "Show my account"
+            * "My profile"
+
+        - user_addresses: For viewing user saved addresses. Use when:
+          * User wants to see their saved addresses
+          * User uses phrases like "show my addresses", "view addresses", "my saved addresses", "shipping addresses", "billing addresses"
+          * User wants to see their delivery or billing address information
+          Examples:
+            * "Show me my addresses"
+            * "View my saved addresses"
+            * "What addresses do I have saved?"
+            * "Show my shipping addresses"
+            * "My billing addresses"
+
+        - add_address_form: For saving user addresses to the database. Use when:
+          * User provides address information to be saved
+          * User uses phrases like "add address", "save address", "my address is", "add shipping address", "add billing address"
+          * User provides specific address details (street, city, state, ZIP)
+          Examples:
+            * "Add my address: 123 Main St, New York, NY 10001"
+            * "Save this billing address: 456 Oak Ave, Los Angeles CA 90210"
+            * "My shipping address is 789 Pine St, Seattle WA 98101"
+            * "Add address 321 Elm St, Austin Texas 78701 as default"
+            * "Save my address: 555 Broadway, Chicago IL 60601"
+
+        - edit_address: For updating existing user addresses. Use when:
+          * User wants to modify an existing address
+          * User uses phrases like "edit address", "update address", "change address", "modify address"
+          * User provides an address ID and new information to update
+          Examples:
+            * "Edit address 3 with new street: 456 Oak Avenue"
+            * "Update my address ID 1: change city to Los Angeles and zip to 90210"
+            * "Change address 2 to my default home address"
+            * "Modify address 5: update the state to California"
+            * "Edit my address number 7, change the ZIP code to 12345"
+
+        - delete_address: For removing user addresses from the database. Use when:
+          * User wants to delete/remove an existing address
+          * User uses phrases like "delete address", "remove address", "delete my address"
+          * User specifies an address ID to be deleted
+          Examples:
+            * "Delete address 3"
+            * "Remove my address with ID 7"
+            * "Delete address number 12 please"
+            * "I want to remove address 5 from my account"
+            * "Remove address ID 9"
 
         - product_search: ONLY for when the user is **browsing, discovering, or asking about product availability/categories**.
         Examples:
@@ -192,6 +252,11 @@ async def classifier_node(state: GlobalState) -> GlobalState:
         - If user explicitly says "add to cart" or any variation (e.g. "add this", "put in my cart", "add item to cart") → ALWAYS choose add_to_cart
         - Even if the product is mentioned, if the action is "add to cart", do not classify as product_search.
         - If user wants to view or check cart contents (e.g. "show my cart", "view cart", "what's in my cart") → ALWAYS choose view_cart
+        - If user wants to view their profile or account details (e.g. "show my profile", "my account", "profile details") → ALWAYS choose user_profile
+        - If user wants to view their saved addresses (e.g. "show my addresses", "view addresses", "my saved addresses") → ALWAYS choose user_addresses
+        - If user provides address details to save (e.g. "add my address: 123 Main St", "save address", "my address is") → ALWAYS choose add_address_form
+        - If user wants to modify an existing address with ID (e.g. "edit address 3", "update address 5", "change address 2") → ALWAYS choose edit_address
+        - If user wants to delete an existing address with ID (e.g. "delete address 3", "remove address 7", "delete my address 5") → ALWAYS choose delete_address
 
 
         CRITICAL RULES FOR LOGIN INTENTS:
@@ -242,11 +307,16 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             - If intent = signup_with_details → "Creating your account..."
             - If intent = add_to_cart → "Adding your product to cart..."
             - If intent = view_cart → "Retrieving your cart details..."
+            - If intent = user_profile → "Fetching your profile details..."
+            - If intent = user_addresses → "Retrieving your saved addresses..."
+            - If intent = add_address_form → "Saving your address..."
+            - If intent = edit_address → "Updating your address..."
+            - If intent = delete_address → "Removing your address..."
         3. Provide a confidence score between 0.0 and 1.0 indicating how certain you are about the intent classification.
 
         Output format:
         Return **only valid JSON** with the following fields:
-        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart]
+        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart, user_profile, user_addresses, add_address_form, edit_address, delete_address]
         - `confidence`: float between 0.0 and 1.0
         - `disfluent_message`: string
 

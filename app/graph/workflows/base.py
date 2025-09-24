@@ -19,9 +19,14 @@ import aiosqlite
 from app.graph.workflows.signup.subgraphs.generate_signup_form.nodes.runner import run_generate_signup_form
 from app.graph.workflows.signup.subgraphs.signup_with_details.nodes.runner import run_signup_with_details
 from app.graph.workflows.signin.subgraphs.login_with_credentials.nodes.runner import run_login_with_credentials
-from app.graph.workflows.auth_middleware.nodes.runner import run_auth_middleware
+from app.services.auth_middleware import auth_middleware_service
 from app.graph.workflows.order_management.subgraphs.add_to_cart.nodes.runner import run_add_to_cart
 from app.graph.workflows.order_management.subgraphs.view_cart.nodes.runner import run_view_cart
+from app.graph.workflows.user_management.subgraphs.user_profile.nodes.runner import run_user_profile
+from app.graph.workflows.user_management.subgraphs.user_addresses.nodes.runner import run_user_addresses
+from app.graph.workflows.user_management.subgraphs.add_address.nodes.runner import run_add_address
+from app.graph.workflows.user_management.subgraphs.edit_address.nodes.runner import run_edit_address
+from app.graph.workflows.user_management.subgraphs.delete_address.nodes.runner import run_delete_address
 
 
 
@@ -43,40 +48,41 @@ def should_handle_error(state: GlobalState) -> str:
     return NodeName.OUTPUT_HANDLER
 
 
-async def run_auth_protected_product_search(state: GlobalState, config=None) -> GlobalState:
-    """Run product search with auth middleware protection."""
-    # First run auth middleware
-    auth_state = await run_auth_middleware(state, WorkflowType.PRODUCT_SEARCH, config)
-    
-    # If auth failed, return early with auth error
-    if not auth_state.get("is_authenticated", False):
-        return auth_state
-    
-    # If auth passed, run the actual product search workflow
-    return await run_product_search(auth_state, config)
-
 async def run_auth_protected_add_to_cart(state: GlobalState, config=None) -> GlobalState:
-    """Run product search with auth middleware protection."""
-    # First run auth middleware
-    auth_state = await run_auth_middleware(state, WorkflowType.ADD_TO_CART, config)
-    
-    # If auth failed, return early with auth error
-    if not auth_state.get("is_authenticated", False):
-        return auth_state
-    
-    # If auth passed, run the actual product search workflow
-    return await run_add_to_cart(auth_state, config)
+    """Run add to cart with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.ADD_TO_CART,
+        workflow_runner=run_add_to_cart,
+        config=config
+    )
 
 async def run_auth_protected_view_cart(state: GlobalState, config=None) -> GlobalState:
     """Run view cart with auth middleware protection."""
-    auth_state = await run_auth_middleware(state, WorkflowType.VIEW_CART, config)
-    
-    # If auth failed, return early with auth error
-    if not auth_state.get("is_authenticated", False):
-        return auth_state
-    
-    # If auth passed, run the actual view cart workflow
-    return await run_view_cart(auth_state, config)
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.VIEW_CART,
+        workflow_runner=run_view_cart,
+        config=config
+    )
+
+async def run_auth_protected_user_profile(state: GlobalState, config=None) -> GlobalState:
+    """Run user profile with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.USER_PROFILE,
+        workflow_runner=run_user_profile,
+        config=config
+    )
+
+async def run_auth_protected_user_addresses(state: GlobalState, config=None) -> GlobalState:
+    """Run user addresses with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.USER_ADDRESSES,
+        workflow_runner=run_user_addresses,
+        config=config
+    )
 
 
 async def run_auth_protected_place_order(state: GlobalState, config=None) -> GlobalState:
@@ -84,17 +90,48 @@ async def run_auth_protected_place_order(state: GlobalState, config=None) -> Glo
     from typing import cast
     from app.graph.subgraphs.place_order.graph import PlaceOrderGraph
     
-    # First run auth middleware
-    auth_state = await run_auth_middleware(state, WorkflowType.PLACE_ORDER, config)
+    async def place_order_runner(state: GlobalState, config=None) -> GlobalState:
+        """Wrapper for place order subgraph."""
+        place_order_graph = PlaceOrderGraph.create()
+        result = await place_order_graph.ainvoke(state, config)
+        return cast(GlobalState, result)
     
-    # If auth failed, return early with auth error
-    if not auth_state.get("is_authenticated", False):
-        return auth_state
-    
-    # If auth passed, run the actual place order workflow
-    place_order_graph = PlaceOrderGraph.create()
-    result = await place_order_graph.ainvoke(auth_state, config)
-    return cast(GlobalState, result)
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.PLACE_ORDER,
+        workflow_runner=place_order_runner,
+        config=config
+    )
+
+
+async def run_auth_protected_add_address(state: GlobalState, config=None) -> GlobalState:
+    """Run add address with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.ADD_ADDRESS_FORM,
+        workflow_runner=run_add_address,
+        config=config
+    )
+
+
+async def run_auth_protected_edit_address(state: GlobalState, config=None) -> GlobalState:
+    """Run edit address with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.EDIT_ADDRESS,
+        workflow_runner=run_edit_address,
+        config=config
+    )
+
+
+async def run_auth_protected_delete_address(state: GlobalState, config=None) -> GlobalState:
+    """Run delete address with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.DELETE_ADDRESS,
+        workflow_runner=run_delete_address,
+        config=config
+    )
 
 
 async def create_base_graph():
@@ -135,6 +172,11 @@ async def create_base_graph():
     graph.add_node(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, run_auth_protected_place_order)
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, run_auth_protected_add_to_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, run_auth_protected_view_cart)
+    graph.add_node(NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW, run_auth_protected_user_profile)
+    graph.add_node(NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW, run_auth_protected_user_addresses)
+    graph.add_node(NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW, run_auth_protected_add_address)
+    graph.add_node(NodeName.AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW, run_auth_protected_edit_address)
+    graph.add_node(NodeName.AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW, run_auth_protected_delete_address)
     # Route to different workflows based on orchestrator's decision
     graph.add_conditional_edges(
         NodeName.ORCHESTRATOR_NODE,
@@ -145,6 +187,11 @@ async def create_base_graph():
             WorkflowType.PLACE_ORDER: NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
             WorkflowType.ADD_TO_CART: NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW,
             WorkflowType.VIEW_CART: NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW,
+            WorkflowType.USER_PROFILE: NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW,
+            WorkflowType.USER_ADDRESSES: NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW,
+            WorkflowType.ADD_ADDRESS_FORM: NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW,
+            WorkflowType.EDIT_ADDRESS: NodeName.AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW,
+            WorkflowType.DELETE_ADDRESS: NodeName.AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW,
             # Auth-protected payment workflows
             WorkflowType.INITIATE_PAYMENT: NodeName.INITIATE_PAYMENT_WORKFLOW,
             WorkflowType.PAYMENT_STATUS: NodeName.PAYMENT_STATUS_WORKFLOW,

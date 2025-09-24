@@ -12,6 +12,28 @@ export type CartItem = {
   updated_at: string;
 };
 
+export type CartItemWithProductDetails = CartItem & {
+  product_details: {
+    id: number;
+    name: string;
+    category: string;
+    price: number;
+    gender: string;
+    brand: string;
+    material: string;
+    style: string;
+    pattern: string;
+    color: string;
+    images: {
+      thumbnail: string;
+      preview: string;
+      full: string;
+    };
+    available_sizes: string[];
+    unit: string;
+  };
+};
+
 export type AddToCartSuccess = {
   message: unknown;
   cart_details: CartItem[];
@@ -20,7 +42,7 @@ export type AddToCartSuccess = {
 
 export type CartDetails = {
   success_message: string;
-  cart_details: CartItem[];
+  cart_details: CartItemWithProductDetails[];
   cart_summary: {
     item_count: number;
     total_items: number;

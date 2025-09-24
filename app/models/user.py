@@ -51,6 +51,9 @@ class UserAddress(BaseModel):
     zip_code: str
     country: str = "US"
     is_default: bool = False
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
 
 
 class AuthStatus(BaseModel):

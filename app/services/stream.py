@@ -102,27 +102,32 @@ class StreamService:
 
     def _extract_workflow_widget_json(self, state_data):
         """
-        Fully dynamic extraction of workflow widget JSON from any workflow state.
-        No hardcoded workflow names - discovers them automatically.
+        Extract workflow widget JSON from specific workflow states, not the entire global state.
         """
         if not isinstance(state_data, dict):
             return None
         
-        # Strategy 1: Look for explicit workflow_widget_json field
+        # Strategy 1: Look for explicit workflow_widget_json field in global state
         if "workflow_widget_json" in state_data:
-            return state_data["workflow_widget_json"]
+            widget_json = state_data["workflow_widget_json"]
+            if widget_json:  # Only return if it has content
+                return widget_json
         
-        # Strategy 2: Auto-discover workflow-specific nested states
+        # Strategy 2: Look for workflow-specific widget JSON in nested states
+        current_workflow = state_data.get("current_workflow")
+        if current_workflow:
+            # Check if there's a nested state for the current workflow
+            workflow_state = state_data.get(current_workflow)
+            if isinstance(workflow_state, dict) and "workflow_widget_json" in workflow_state:
+                widget_json = workflow_state["workflow_widget_json"]
+                if widget_json:  # Only return if it has content
+                    return widget_json
+        
+        # Strategy 3: Auto-discover workflow-specific nested states (fallback)
         for key, value in state_data.items():
             if isinstance(value, dict) and self._is_workflow_state(key, value):
-                # Extract widget data from discovered workflow state
-                widget_data = self._extract_widget_data_dynamically(key, value)
-                if widget_data:
-                    return widget_data
-        
-        # Strategy 3: Direct workflow result detection (for subgraphs)
-        if self._is_workflow_result(state_data):
-            return self._format_workflow_result(state_data)
+                if "workflow_widget_json" in value and value["workflow_widget_json"]:
+                    return value["workflow_widget_json"]
             
         return None
     

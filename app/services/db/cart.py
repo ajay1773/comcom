@@ -1,5 +1,5 @@
 from typing import List, Optional
-from app.services.db.db import CartItemWithProductDetails, db_service, UserCart, CartItem, CartItemCreate
+from app.services.db.db import CartItemWithProductDetails, db_service, UserCart, CartItem, CartItemCreate, Product
 from datetime import datetime, timedelta
 
 
@@ -279,7 +279,14 @@ class CartService:
         try:
             cart = await self.get_or_create_cart(user_id)
             result = await self.db_service.execute_query(
-                "SELECT id, cart_id, product_id, quantity, unit_price, total_price, size, color, unit, selected_options, added_at, updated_at FROM cart_items WHERE cart_id = ? JOIN products ON cart_items.product_id = products.id",
+                """SELECT
+                    ci.id, ci.cart_id, ci.product_id, ci.quantity, ci.unit_price, ci.total_price,
+                    ci.size, ci.color, ci.unit, ci.selected_options, ci.added_at, ci.updated_at,
+                    p.name, p.category, p.price, p.gender, p.brand, p.material, p.style,
+                    p.pattern, p.color, p.images, p.available_sizes, p.unit
+                FROM cart_items ci
+                JOIN products p ON ci.product_id = p.id
+                WHERE ci.cart_id = ?""",
                 (cart.id,)
             )
             return [
@@ -296,7 +303,21 @@ class CartService:
                     selected_options=row[9],
                     added_at=row[10] or "1970-01-01 00:00:00",  # Default if None
                     updated_at=row[11] or "1970-01-01 00:00:00",  # Default if None
-                    product_details=row[12]
+                    product_details=Product(
+                        id=row[2],  # product_id from cart_items
+                        name=row[12],
+                        category=row[13],
+                        price=row[14],
+                        gender=row[15],
+                        brand=row[16],
+                        material=row[17],
+                        style=row[18],
+                        pattern=row[19],
+                        color=row[20],
+                        images=row[21],
+                        available_sizes=row[22],
+                        unit=row[23]
+                    )
                 )
                 for row in result
             ]

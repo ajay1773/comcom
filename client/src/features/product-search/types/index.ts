@@ -22,7 +22,6 @@ export type Product = {
   available_sizes: string[];
   unit: string;
 };
-
 export type ProductImage = {
   thumbnail: string;
   preview: string;

@@ -119,6 +119,7 @@ class ChatHistoryState:
             "signup_with_details": None,
             "login_with_credentials": None,
             "add_to_cart": None,
+            "view_cart": None,
         }
 
     async def get_initial_state_from_config(
@@ -155,9 +156,9 @@ class ChatHistoryState:
                     intent=existing_state.values.get("intent"),
                     conversation_history=updated_conversation_history,
                     user_profile=existing_state.values.get("user_profile", {}),
-                    response=existing_state.values.get("response"),
+                    response=base_state["response"],
                     user_id=existing_state.values.get("user_id"),
-                    session_token=existing_state.values.get("session_token"),
+                    session_token=base_state["session_token"],
                     is_authenticated=existing_state.values.get("is_authenticated", False),
                     auth_required=existing_state.values.get("auth_required", False),
                     pending_workflow=existing_state.values.get("pending_workflow"),
@@ -178,6 +179,7 @@ class ChatHistoryState:
                     login_with_credentials=existing_state.values.get("login_with_credentials"),
                     auth_middleware=existing_state.values.get("auth_middleware"),
                     add_to_cart=existing_state.values.get("add_to_cart"),
+                    view_cart=existing_state.values.get("view_cart"),
                 )
 
             else:
@@ -214,6 +216,7 @@ class ChatHistoryState:
                     login_with_credentials=base_state["login_with_credentials"],
                     auth_middleware=base_state["auth_middleware"],
                     add_to_cart=base_state["add_to_cart"],
+                    view_cart=base_state["view_cart"],
                 )
 
         except Exception as e:
@@ -252,6 +255,7 @@ class ChatHistoryState:
                 login_with_credentials=base_state["login_with_credentials"],
                 auth_middleware=base_state["auth_middleware"],
                 add_to_cart=base_state["add_to_cart"],
+                view_cart=base_state["view_cart"],
             )
 
 
