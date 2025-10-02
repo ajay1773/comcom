@@ -4,7 +4,7 @@ from app.graph.workflows.order_management.types import AddToCartState
 from app.services.db.cart import cart_service
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 async def handle_success_node(state: AddToCartState) -> AddToCartState:
     """Handle successful add to cart operation with LLM-generated response."""
@@ -64,16 +64,25 @@ async def handle_success_node(state: AddToCartState) -> AddToCartState:
             for item in cart_items
         ]
 
-        state["workflow_widget_json"] = {
-        "template": "cart_details",
-        "payload": {
-            "message": {
-                "type": "success",
-                "message": "Deleted from cart"
-            },
-            "cart_details": cart_details,
-        }
-    } 
+        
+
+        widget_event_emitter.emit(
+            WidgetEventType.DELETE_FROM_CART_SUCCESS,
+            {
+                "message": {
+                    "type": "success",
+                    "text": "Deleted from cart"
+                },
+                "cart_items": cart_details,
+                "cart_summary": {
+                    "item_count": len(cart_details),
+                    "total_items": len(cart_details),
+                    "total_value": sum(item.get("total_price", 0) for item in cart_details) if cart_details else 0
+                },
+            }
+        )
+
+        return state
         
     except Exception:
         # Fallback success message if LLM fails
@@ -84,18 +93,24 @@ async def handle_success_node(state: AddToCartState) -> AddToCartState:
         else:
             success_message = f"Great! I've added {quantity} {product_name} to your cart. You now have {len(cart_details)} items in your cart."
     
-    # Set success response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "delete_from_cart_success",
-        "payload": {
-            "success_message": success_message,
-            "cart_details": cart_details,
-            "suggested_actions": [
-                "View cart",
-                "Continue shopping", 
-                "Proceed to checkout"
-            ]
-        }
-    }
-    
-    return state
+        # Set success response in workflow widget
+        widget_event_emitter.emit(
+            WidgetEventType.DELETE_FROM_CART_SUCCESS,
+            {
+                "success_message": success_message,
+                "cart_items": cart_details,
+                "cart_summary": {
+                    "item_count": len(cart_details),
+                    "total_items": len(cart_details),
+                    "total_value": sum(item["total_price"] for item in cart_details) if cart_details else 0
+                },
+                "suggested_actions": [
+                    "View cart",
+                    "Continue shopping", 
+                    "Proceed to checkout"
+                ]
+            }
+        )
+        
+        return state
+        

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import type { PaymentDetails } from "../../types";
 import { useCallback } from "react";
 import { Separator } from "@/components/ui/separator";
-import { useChat } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 
 const formSchema = z.object({
   userName: z
@@ -62,7 +62,7 @@ type PaymentFormProps = {
 };
 
 const PaymentForm = ({ details }: PaymentFormProps) => {
-  const { sendMessage } = useChat();
+  const { sendMessage } = useChatStore();
 
   const form = useForm<PaymentFormData>({
     resolver: zodResolver(formSchema),

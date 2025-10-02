@@ -2,6 +2,7 @@ from typing import cast
 from app.graph.workflows.signup.subgraphs.generate_signup_form.graph import GenerateSignupFormGraph
 from app.models.chat import GlobalState
 from app.graph.workflows.signup.types import GenerateSignupFormState
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 from langchain_core.runnables import RunnableConfig
 
 
@@ -11,7 +12,6 @@ async def run_generate_signup_form(state: GlobalState, config: RunnableConfig | 
     sub_state = cast(GenerateSignupFormState, state.get("generate_signup_form") or {
         "search_query": state.get('user_message',''),
         "suggestions": [],
-        "workflow_widget_json": None,
     })
     
     # 2. Always update search_query with current user_message
@@ -22,8 +22,16 @@ async def run_generate_signup_form(state: GlobalState, config: RunnableConfig | 
     updated_sub_state = cast(GenerateSignupFormState, await subgraph.ainvoke(sub_state))
     # 4. merge back into global
     state["generate_signup_form"] = updated_sub_state
-    state["workflow_widget_json"] = {
-        "template": "send_signup_form",
-        "payload": updated_sub_state.get("suggestions", []),
-    }
+    
+    # Emit signup form widget event
+    widget_event_emitter.emit(
+        WidgetEventType.SIGNUP_FORM,
+        {
+            "form_fields": updated_sub_state.get("suggestions", []),
+            "suggested_actions": ["Fill form", "Cancel"]
+        }
+    )
+    
+    # Text response will be automatically extracted by output_handler_node
+    
     return state

@@ -3,6 +3,7 @@
 from app.graph.workflows.order_management.types import ViewCartState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_view_cart_fail_node(state: ViewCartState) -> ViewCartState:
@@ -13,28 +14,41 @@ async def handle_view_cart_fail_node(state: ViewCartState) -> ViewCartState:
 
     # Generate contextual failure response using LLM
     failure_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant handling view cart failures.
+        ("system", """You are a seasoned fashion consultant with deep expertise in style, fit, and trends. Your communication style is sophisticated yet approachable, like a personal stylist who genuinely cares about helping customers find perfect matches.
 
-        Generate a friendly, empathetic response when viewing cart contents fails.
+        Personality attributes:
+        - Analytical and detail-oriented about product features
+        - Educated in fabrics, sizing, and style combinations
+        - Diplomatic when suggesting alternatives
+        - Builds trust through knowledgeable recommendations
+        - Uses fashion terminology appropriately but explains when needed
+        - Focuses on helping customers discover their personal style
+
+        You're not just selling products - you're curating experiences and building confidence.
+
+        Handle view cart failures with fashion consultant care and professionalism.
+        Format your response in markdown for better readability.
+
+        Generate a warm, empathetic response when viewing their curated collection fails.
 
         Guidelines:
-        - Be understanding and helpful
-        - Explain the issue in simple terms
-        - Provide clear next steps for the user
-        - Keep the tone conversational and reassuring
+        - Be understanding and helpful with fashion consultant warmth
+        - Explain the issue in simple, elegant terms
+        - Provide clear next steps with your professional guidance
+        - Keep the tone conversational, reassuring, and style-focused
 
         Context:
-        - User's original request: {user_query}
-        - Technical error: {error_message}
+        - Client's style request: {user_query}
+        - Technical issue: {error_message}
 
-        Common issues and appropriate responses:
-        - Authentication required: Guide them to sign in or create an account
-        - Session expired: Ask them to sign in again
-        - Database errors: Apologize and suggest trying again
-        - No cart found: Suggest they start shopping
-        - Other errors: Apologize and suggest trying again or contacting support
+        Common issues and appropriate fashion consultant responses:
+        - Authentication required: Guide them to access their style profile
+        - Session expired: Ask them to sign in again to their style account
+        - Database errors: Apologize professionally and suggest trying again
+        - No cart found: Suggest they start curating their style collection
+        - Other errors: Apologize with consultant care and suggest alternatives
         """),
-        ("user", """Please generate a helpful response for this cart viewing failure that will guide the user to resolve the issue.""")
+        ("user", """Please generate a helpful, fashion-focused response for this style collection viewing issue that will guide the client to resolve it.""")
     ])
 
     try:
@@ -49,15 +63,15 @@ async def handle_view_cart_fail_node(state: ViewCartState) -> ViewCartState:
     except Exception:
         # Fallback failure message if LLM fails
         if "authentication" in error_message.lower() if error_message else False or "user" in error_message.lower() if error_message else False:
-            failure_message = "I need you to be signed in to view your cart. Please sign in and try again."
+            failure_message = "**I'd love to show you your curated collection!** Please access your style profile first, then we can view your selections together."
         elif "session" in error_message.lower() if error_message else False or "expired" in error_message.lower() if error_message else False:
-            failure_message = "Your session has expired. Please sign in again to view your cart."
+            failure_message = "**Your style session has expired.** Please sign in again to access your curated collection. *I'm here to help once you're back!*"
         elif "database" in error_message.lower() if error_message else False or "connection" in error_message.lower() if error_message else False:
-            failure_message = "I'm having trouble accessing your cart right now. Please try again in a moment."
+            failure_message = "**I'm having a small issue accessing your style collection right now.** Please try again in a moment - your curated pieces are worth the wait!"
         elif "not found" in error_message.lower() if error_message else False or "empty" in error_message.lower() if error_message else False:
-            failure_message = "You don't have any items in your cart yet. Start browsing to add some products!"
+            failure_message = "**Your style collection is ready for curation!** Let's discover some amazing pieces that reflect your unique taste. *What kind of look are you envisioning?*"
         else:
-            failure_message = "I encountered an issue showing your cart. Please try again or contact support if the problem continues."
+            failure_message = "**I encountered a small hiccup while accessing your style collection.** Please try again, or *let me help you discover new pieces while we resolve this.*"
 
     # Determine recovery options based on error type
     if "authentication" in error_message.lower() if error_message else False or "user" in error_message.lower() if error_message else False:
@@ -70,14 +84,18 @@ async def handle_view_cart_fail_node(state: ViewCartState) -> ViewCartState:
         recovery_options = ["Try again", "Browse products", "Contact support"] if error_message else None
 
     # Set failure response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "error_message",
-        "payload": {
-            "error_type": "view_cart_failure",
-            "error_message": failure_message,
-            "recovery_options": recovery_options,
-            "workflow_name": "view_cart"
-        }
-    }
-
+        widget_event_emitter.emit(
+            WidgetEventType.VIEW_CART_FAILURE,
+            {
+            "cart_items": [],
+            "cart_summary": {
+                "item_count": 0,
+                "total_items": 0,
+                "total_value": 0
+            },
+            "success_message": failure_message,
+            "recovery_options": recovery_options
+            }
+        )
+    
     return state

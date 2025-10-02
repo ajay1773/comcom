@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import type { UserAddress } from "../../types";
 import { Edit, Plus, ArrowLeft, Trash } from "lucide-react";
 import AddressForm from "../address-form";
-import { useChat } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 import { toast } from "sonner";
 import { get } from "lodash";
 
@@ -33,7 +33,7 @@ const UserAddressesWindow: React.FC<UserAddressesWindowProps> = ({
   const [editingAddress, setEditingAddress] = useState<UserAddress | null>(
     null
   );
-  const { sendMessage } = useChat();
+  const { sendMessage } = useChatStore();
 
   const handleAddNewAddress = () => {
     setEditingAddress(null);

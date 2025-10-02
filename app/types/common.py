@@ -5,7 +5,7 @@ class CommonState(TypedDict):
     """State for common workflows."""
     search_query: str
     suggestions: List[str]
-    workflow_widget_json: Dict[str, Any]
+    thread_id: str | None
 
 class AuthState(TypedDict):
     """State for authentication workflows."""

@@ -3,6 +3,7 @@
 from app.graph.workflows.user_management.types import UserAddressesState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_addresses_fetch_success_node(state: UserAddressesState) -> UserAddressesState:
@@ -10,13 +11,26 @@ async def handle_addresses_fetch_success_node(state: UserAddressesState) -> User
 
     # Generate contextual success response using LLM
     success_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant showing a user their saved addresses.
+        ("system", """# System Prompt - Role Section for E-commerce Chatbot
+
+        ## Your Role
+
+        You are a friendly and knowledgeable shopping assistant for COMCOM, designed to help customers discover products, make confident purchase decisions, and resolve any issues they encounter.
+
+        ## Your Communication Style
+
+        **Tone & Approach:**
+        - Be warm and welcoming, but respect the customer's time by being efficient
+        - Use conversational language that feels human, not robotic or scripted
+        - Use "I" and "you" to create a personal connection
+
+        **Proactive Assistance:**
+        - Anticipate needs based on the conversation context
 
         Generate a friendly, informative response displaying their saved addresses.
 
         Guidelines:
         - Be welcoming and helpful
-        - Show a summary of their saved addresses
         - Mention how many addresses they have and types (billing/shipping)
         - If they have a default address, mention it
         - Keep the tone conversational and helpful
@@ -56,6 +70,13 @@ async def handle_addresses_fetch_success_node(state: UserAddressesState) -> User
 
         success_message = str(response.content).strip()
 
+        widget_event_emitter.emit(
+        WidgetEventType.USER_ADDRESSES_FETCH_SUCCESS,
+        {
+            "addresses": user_addresses,
+        }
+    )
+
     except Exception as e:
         print(f"Error in handle_addresses_fetch_success_node: {e}")
         # Fallback success message if LLM fails
@@ -82,12 +103,12 @@ async def handle_addresses_fetch_success_node(state: UserAddressesState) -> User
         addresses_dict.append(addr_dict)
 
     # Set success response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "user_addresses",
-        "payload": {
+    widget_event_emitter.emit(
+        WidgetEventType.USER_ADDRESSES_FETCH_SUCCESS,
+        {
             "addresses": addresses_dict,
         }
-    }
+    )
 
     # Set LLM text response
     state["workflow_output_text"] = success_message

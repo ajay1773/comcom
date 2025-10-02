@@ -3,7 +3,7 @@
 from app.graph.workflows.user_management.types import EditAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 async def handle_address_edit_failure_node(state: EditAddressState) -> EditAddressState:
     """Generate failure response for failed address edit."""
@@ -68,16 +68,19 @@ async def handle_address_edit_failure_node(state: EditAddressState) -> EditAddre
         state["workflow_output_text"] = failure_message
         
         # Prepare JSON response for frontend
-        state["workflow_output_json"] = {
-            "success": False,
-            "message": "Failed to update address",
-            "error": error_message,
-            "address_id": address_id,
-            "suggested_actions": [
-                "View all addresses",
-                "Check address ID" if "not found" in error_message.lower() else "Try again",
-                "Provide complete information" if "missing" in error_message.lower() else "Contact support if needed"
-            ]
-        }
+        widget_event_emitter.emit(
+            WidgetEventType.EDIT_ADDRESS_FAILURE,
+            {
+                "success": False,
+                "message": "Failed to update address",
+                "error": error_message,
+                "address_id": address_id,
+                "suggested_actions": [
+                    "View all addresses",
+                    "Check address ID" if "not found" in error_message.lower() else "Try again",
+                    "Provide complete information" if "missing" in error_message.lower() else "Contact support if needed"
+                ]
+            }
+        )
     
     return state

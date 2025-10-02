@@ -3,14 +3,30 @@
 from app.graph.workflows.order_management.types import ViewCartState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
     """Handle successful view cart operation with LLM-generated response."""
 
     # Generate contextual success response using LLM
     success_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant showing a user's cart contents.
+        ("system", """# System Prompt - Role Section for E-commerce Chatbot
+
+        ## Your Role
+
+        You are a friendly and knowledgeable shopping assistant for COMCOM, designed to help customers discover products, make confident purchase decisions, and resolve any issues they encounter.
+
+        ## Your Communication Style
+
+        **Tone & Approach:**
+        - Be warm and welcoming, but respect the customer's time by being efficient
+        - Use conversational language that feels human, not robotic or scripted
+        - Use "I" and "you" to create a personal connection
+
+        **Proactive Assistance:**
+        - Anticipate needs based on the conversation context
+        - Offer relevant suggestions without being intrusive
+        - Suggest next steps to keep the customer's journey moving forward
 
         Generate a friendly, informative response displaying their cart contents.
 
@@ -95,24 +111,21 @@ async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
         else:
             success_message = "Your cart is currently empty. Start shopping to add items!"
 
-    # Set success response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "cart_details",
-        "payload": {
-            "success_message": success_message,
-            "cart_details": cart_details_dict if cart_details else [],
-            "cart_summary": {
-                "item_count": cart_count,
-                "total_items": total_items,
-                "total_value": total_value
-            },
-            "suggested_actions": [
-                "Continue shopping",
-                "Proceed to checkout",
-                "Remove items" if cart_details else None,
-                "Add more items" if cart_details else "Browse products"
-            ]
+    # Emit cart details widget event
+    widget_event_emitter.emit(
+        WidgetEventType.VIEW_CART_SUCCESS,
+        {
+        "cart_items": cart_details_dict if cart_details else [],
+        "cart_summary": {
+            "item_count": cart_count,
+            "total_items": total_items,
+            "total_value": total_value
+        },
+        "success_message": success_message
         }
-    }
+    )
+
+    # Set text response for streaming
+    state["workflow_output_text"] = success_message
 
     return state

@@ -1,7 +1,10 @@
+import json
 from langchain_core.runnables import RunnableConfig
 from app.models.chat import GlobalState
 from langgraph.graph.state import CompiledStateGraph
 from typing import List, Dict, Any
+from app.services.db.conversation import conversation_service
+from app.services.auth import auth_service
 
 
 class ConversationHistoryManager:
@@ -16,10 +19,20 @@ class ConversationHistoryManager:
         conversation_history.append(f"User: {message}")
         return self._trim_history(conversation_history)
 
-    def add_assistant_message(self, conversation_history: List[str], message: str) -> List[str]:
+    def add_assistant_message(self, conversation_history: List[str], message: str, widget_json: Dict[str, Any] = None) -> List[str]:
         """Add an assistant message to the conversation history."""
         conversation_history = conversation_history or []
-        conversation_history.append(f"Assistant: {message}")
+        
+        # Create the basic assistant message
+        assistant_entry = f"Assistant: {message}"
+        
+        # If widget JSON is provided, append it as a JSON string
+        if widget_json:
+            import json
+            widget_json_str = json.dumps(widget_json, separators=(',', ':'))  # Compact JSON
+            assistant_entry += f" | Widget: {widget_json_str}"
+        
+        conversation_history.append(assistant_entry)
         return self._trim_history(conversation_history)
 
     def add_workflow_message(self, conversation_history: List[str], workflow_type: str, data: Dict[str, Any]) -> List[str]:
@@ -39,6 +52,7 @@ class ConversationHistoryManager:
 
         conversation_history.append(summary)
         return self._trim_history(conversation_history)
+
 
     def get_recent_context(self, conversation_history: List[str], limit: int = 10) -> List[str]:
         """Get the most recent conversation context."""
@@ -95,7 +109,7 @@ class ChatHistoryState:
             "user_message": message,
             "intent": None,
             "conversation_history": [],
-            "user_profile": {},
+            "user_profile": None,
             "response": None,
             "user_id": None,
             "session_token": token,
@@ -120,7 +134,47 @@ class ChatHistoryState:
             "login_with_credentials": None,
             "add_to_cart": None,
             "view_cart": None,
+            "user_addresses": None,
+            "add_address_form": None,
+            "edit_address": None,
+            "delete_address": None,
+            "delete_from_cart": None,
+            "user_profile": None,
         }
+
+    async def _ensure_conversation_exists(self, thread_id: str, token: str) -> None:
+        """Ensure conversation exists in database and link to user if authenticated."""
+        if not thread_id:
+            return
+            
+        try:
+            # Get user from token if available
+            user_id = None
+            if token:
+                try:
+                    user = await auth_service.get_user_from_token(token)
+                    if user:
+                        user_id = user.id
+                except Exception:
+                    # Token might be invalid, continue without user
+                    pass
+            
+            # Get or create conversation
+            await conversation_service.get_or_create_conversation(thread_id, user_id)
+        except Exception as e:
+            print(f"⚠️ Failed to ensure conversation exists: {e}")
+            # Don't fail the entire flow if conversation management fails
+
+    async def _update_conversation_activity(self, thread_id: str) -> None:
+        """Update conversation activity after processing a message."""
+        if not thread_id:
+            return
+            
+        try:
+            await conversation_service.update_conversation_activity(thread_id)
+        except Exception as e:
+            print(f"⚠️ Failed to update conversation activity: {e}")
+            # Don't fail the entire flow if conversation management fails
 
     async def get_initial_state_from_config(
         self,
@@ -134,6 +188,9 @@ class ChatHistoryState:
         Handles both existing and new conversations with proper error recovery.
         """
         thread_id = config.get("configurable", {}).get("thread_id")
+
+        # Ensure conversation exists in database
+        await self._ensure_conversation_exists(thread_id, token)
 
         try:
             # Query the checkpointer for existing conversation state
@@ -155,7 +212,6 @@ class ChatHistoryState:
                     user_message=base_state["user_message"],
                     intent=existing_state.values.get("intent"),
                     conversation_history=updated_conversation_history,
-                    user_profile=existing_state.values.get("user_profile", {}),
                     response=base_state["response"],
                     user_id=existing_state.values.get("user_id"),
                     session_token=base_state["session_token"],
@@ -180,6 +236,12 @@ class ChatHistoryState:
                     auth_middleware=existing_state.values.get("auth_middleware"),
                     add_to_cart=existing_state.values.get("add_to_cart"),
                     view_cart=existing_state.values.get("view_cart"),
+                    user_addresses=existing_state.values.get("user_addresses"),
+                    add_address_form=existing_state.values.get("add_address_form"),
+                    edit_address=existing_state.values.get("edit_address"),
+                    delete_address=existing_state.values.get("delete_address"),
+                    delete_from_cart=existing_state.values.get("delete_from_cart"),
+                    user_profile=existing_state.values.get("user_profile", {}),
                 )
 
             else:
@@ -192,7 +254,6 @@ class ChatHistoryState:
                     user_message=base_state["user_message"],
                     intent=base_state["intent"],
                     conversation_history=initial_conversation_history,
-                    user_profile=base_state["user_profile"],
                     response=base_state["response"],
                     user_id=base_state["user_id"],
                     session_token=base_state["session_token"],
@@ -217,6 +278,12 @@ class ChatHistoryState:
                     auth_middleware=base_state["auth_middleware"],
                     add_to_cart=base_state["add_to_cart"],
                     view_cart=base_state["view_cart"],
+                    user_addresses=base_state["user_addresses"],
+                    add_address_form=base_state["add_address_form"],
+                    edit_address=base_state["edit_address"],
+                    delete_address=base_state["delete_address"],
+                    delete_from_cart=base_state["delete_from_cart"],
+                    user_profile=base_state["user_profile"],
                 )
 
         except Exception as e:
@@ -231,7 +298,6 @@ class ChatHistoryState:
                 user_message=base_state["user_message"],
                 intent=base_state["intent"],
                 conversation_history=fallback_conversation_history,
-                user_profile=base_state["user_profile"],
                 response=base_state["response"],
                 user_id=base_state["user_id"],
                 session_token=base_state["session_token"],
@@ -256,7 +322,17 @@ class ChatHistoryState:
                 auth_middleware=base_state["auth_middleware"],
                 add_to_cart=base_state["add_to_cart"],
                 view_cart=base_state["view_cart"],
+                user_addresses=base_state["user_addresses"],
+                add_address_form=base_state["add_address_form"],
+                edit_address=base_state["edit_address"],
+                delete_address=base_state["delete_address"],
+                delete_from_cart=base_state["delete_from_cart"],
+                user_profile=base_state["user_profile"],
             )
+
+    async def update_conversation_after_processing(self, thread_id: str) -> None:
+        """Update conversation metadata after processing a message."""
+        await self._update_conversation_activity(thread_id)
 
 
 def get_conversation_context_for_workflow(state, limit: int = 10) -> str:

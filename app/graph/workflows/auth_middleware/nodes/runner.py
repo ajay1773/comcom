@@ -22,7 +22,6 @@ async def run_auth_middleware(state: GlobalState, target_workflow: str, config: 
     sub_state = cast(AuthMiddlewareState, {
         "search_query": state.get("user_message", ""),
         "suggestions": [],
-        "workflow_widget_json": {},
         "token": state.get("session_token"),  # Get token from global state
         "is_token_valid": False,
         "user_id": None,
@@ -42,8 +41,6 @@ async def run_auth_middleware(state: GlobalState, target_workflow: str, config: 
     updated_sub_state = cast(AuthMiddlewareState, await subgraph.ainvoke(sub_state, auth_config))
     
     # 3. Merge auth results back into global state
-    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", {})
-    
     # Update global auth state based on middleware results
     if updated_sub_state.get("is_token_valid", False):
         state["is_authenticated"] = True

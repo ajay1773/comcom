@@ -2,6 +2,8 @@
 
 from app.graph.workflows.user_management.types import AddAddressState
 from app.services.llm import llm_service
+from app.services.db.user import user_service
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 from langchain_core.prompts import ChatPromptTemplate
 
 
@@ -9,7 +11,7 @@ async def handle_address_save_success_node(state: AddAddressState) -> AddAddress
     """Generate success response for successfully saved address."""
 
     extracted_address = state.get("extracted_address", {}) if state.get("extracted_address") else None
-    
+    user_id = state.get("user_id")
     # Create success response prompt
     success_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a helpful e-commerce assistant confirming a successful address save.
@@ -46,6 +48,19 @@ async def handle_address_save_success_node(state: AddAddressState) -> AddAddress
         response = await llm.ainvoke(success_prompt.invoke({}))
         
         success_message = str(response.content).strip()
+
+        addresses = await user_service.get_user_addresses(user_id) if user_id else []
+
+        widget_event_emitter.emit(
+            WidgetEventType.ADD_ADDRESS_SUCCESS,
+            {
+                "addresses": addresses,
+                "message": {
+                    "type": "success",
+                    "text": "Address saved successfully"
+                },
+            }
+        )
 
     except Exception as e:
         print(f"Error generating success message: {e}")

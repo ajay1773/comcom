@@ -7,23 +7,24 @@
  * - "thread_info": carries the server-assigned thread_id
  * - "disfluency_generated": short, friendly status message while processing
  * - "llm_stream": incremental natural-language tokens from the model
- * - "llm_json_complete": a complete JSON object (not chunked)
- * - "workflow_progress": progress updates for long-running workflows
- * - "workflow_completed": a workflow has finished running
- * - "workflow_text": final human-readable text response
- * - "workflow_json": final structured JSON response
+ * - "widget_event": structured UI widget data with specific type
+ * - "workflow_widget_json": legacy widget format (deprecated)
  * - "error_message": user-friendly error message
  */
 export type ChatChunkResponse = {
   /** Name of the event emitted by the server */
   event_name: string;
-  /** Human-readable text (used by multiple events, e.g., workflow_text) */
+  /** Human-readable text (used by multiple events, e.g., llm_stream) */
   text?: string;
   /** Thread identifier for chat continuity */
   thread_id?: string;
   /** Raw error string (when present) */
   error?: string;
-  /** Structured JSON payload (final or complete objects only) */
+  /** Widget type for widget_event */
+  widget_type?: string;
+  /** Widget payload for widget_event */
+  payload?: unknown;
+  /** Legacy structured JSON payload (deprecated) */
   json?: {
     template: string;
     payload: unknown;

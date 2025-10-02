@@ -5,11 +5,22 @@ import ProductDetails from "../product-details";
 import { Button } from "@/components/ui/button";
 import { LuArrowLeft } from "react-icons/lu";
 
-type ProductWindowProps = {
-  products: Product[];
+export type ProductWindowProps = {
+  payload: {
+    products: Product[];
+    search_parameters: {
+      query: string;
+      category: string;
+      price_range: string;
+      color: string;
+      brand: string;
+    };
+    result_count: number;
+    success_message: string;
+  };
 };
 
-const ProductWindow: FC<ProductWindowProps> = ({ products }) => {
+const ProductWindow: FC<ProductWindowProps> = ({ payload }) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const handleSelectProduct = (product: Product) => {
@@ -31,7 +42,7 @@ const ProductWindow: FC<ProductWindowProps> = ({ products }) => {
         </div>
       ) : (
         <ProductsList
-          products={products}
+          products={payload.products}
           onSelectProduct={handleSelectProduct}
         />
       )}

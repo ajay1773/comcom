@@ -5,6 +5,7 @@ from decimal import Decimal
 from langchain_core.runnables import RunnableConfig
 from app.services.chat_history_state import chat_history_state
 from app.graph.workflows.base import create_base_graph
+from app.services.widget_events import widget_event_emitter
 import json
 import logging
 
@@ -24,8 +25,18 @@ class StreamService:
             "extract_product_details",
             "extract_login_credentials",
             "extract_params",
-            "extract_signup_details"
+            "extract_signup_details",
+            "output_handler"
         }
+        
+        # Set up widget event listener
+        widget_event_emitter.add_listener("*", self._handle_widget_event)
+        self._current_stream_generator = None
+
+    def _handle_widget_event(self, event):
+        """Handle widget events by storing them for streaming."""
+        # Store the event to be streamed
+        self._latest_widget_event = event
 
     async def stream_base_graph(
         self, message: str, thread_id: str, token: str
@@ -44,6 +55,10 @@ class StreamService:
         initial_state = await chat_history_state.get_initial_state_from_config(
             message, config, compiled_graph, token
         )
+
+        # Clear any previous widget events
+        widget_event_emitter.clear_events()
+        self._latest_widget_event = None
 
         stream = compiled_graph.astream_events(
             initial_state, config=config, version="v1"
@@ -69,157 +84,41 @@ class StreamService:
                     event_data = event.get("data", {})
                     if "chunk" in event_data:
                         chunk = event_data["chunk"]
-                        if hasattr(chunk, "content") and chunk.content:
+                        if hasattr(chunk, "content") and chunk.content is not None:
                             content = chunk.content
-                            if content and content.strip():
+                            # Allow all content including whitespace, but filter out empty strings
+                            if content != "":
                                 yield f"data: {json.dumps({'event_name': 'llm_stream', 'text': content})}\n\n"
 
+            # Handle workflow completion - check for widget events
             elif event_name == "LangGraph" and event_type == "on_chain_end":
-                output = event.get("data", {}).get("output", {})
-                
-                # Extract workflow_widget_json from any completed workflow
-                widget_json = self._extract_workflow_widget_json(output)
-                if widget_json:
+                # Check if any widget events were emitted during this workflow
+                latest_event = widget_event_emitter.get_latest_event()
+                if latest_event and latest_event != getattr(self, '_last_streamed_event', None):
                     try:
-                        # Ensure JSON serializability
-                        serializable_json = self._make_json_serializable(widget_json)
-                        yield f"data: {json.dumps({'event_name': 'workflow_widget_json', 'json': serializable_json})}\n\n"
+                        # Stream the widget event
+                        event_data = {
+                            'event_name': 'widget_event',
+                            'widget_type': latest_event.event_type.value,
+                            'payload': self._make_json_serializable(latest_event.payload)
+                        }
+                        yield f"data: {json.dumps(event_data)}\n\n"
+                        self._last_streamed_event = latest_event
                     except (TypeError, ValueError) as e:
-                        logger.error(f"Failed to serialize workflow_widget_json: {e}")
-                        logger.error(f"Widget JSON type: {type(widget_json)}")
-                        logger.error(f"Widget JSON content: {str(widget_json)[:500]}...")
-                        # Return a safe error message instead of crashing
-                        error_json = {"error": "Failed to serialize workflow output", "message": str(e)}
-                        yield f"data: {json.dumps({'event_name': 'workflow_widget_json', 'json': error_json})}\n\n"
+                        logger.error(f"Failed to serialize widget event: {e}")
+                        error_json = {"error": "Failed to serialize widget event", "message": str(e)}
+                        yield f"data: {json.dumps({'event_name': 'widget_event', 'widget_type': 'error', 'payload': error_json})}\n\n"
 
             # Handle final output from output_handler
             elif event_name == "output_handler" and event_type == "on_chain_end":
-                output = event.get("data", {}).get("output", {})
-                if output:
-                    text_output = output.get("response") or output.get("workflow_output_text")
-                    if text_output:
-                        yield f"data: {json.dumps({'event_name': 'llm_stream', 'text': text_output})}\n\n"
+                # Output handler only manages conversation history now
+                # Text streaming is handled by individual workflow nodes
+                # No need to stream the complete text again
+                pass
+        
+        # Update conversation activity after processing is complete
+        await chat_history_state.update_conversation_after_processing(thread_id)
 
-    def _extract_workflow_widget_json(self, state_data):
-        """
-        Extract workflow widget JSON from specific workflow states, not the entire global state.
-        """
-        if not isinstance(state_data, dict):
-            return None
-        
-        # Strategy 1: Look for explicit workflow_widget_json field in global state
-        if "workflow_widget_json" in state_data:
-            widget_json = state_data["workflow_widget_json"]
-            if widget_json:  # Only return if it has content
-                return widget_json
-        
-        # Strategy 2: Look for workflow-specific widget JSON in nested states
-        current_workflow = state_data.get("current_workflow")
-        if current_workflow:
-            # Check if there's a nested state for the current workflow
-            workflow_state = state_data.get(current_workflow)
-            if isinstance(workflow_state, dict) and "workflow_widget_json" in workflow_state:
-                widget_json = workflow_state["workflow_widget_json"]
-                if widget_json:  # Only return if it has content
-                    return widget_json
-        
-        # Strategy 3: Auto-discover workflow-specific nested states (fallback)
-        for key, value in state_data.items():
-            if isinstance(value, dict) and self._is_workflow_state(key, value):
-                if "workflow_widget_json" in value and value["workflow_widget_json"]:
-                    return value["workflow_widget_json"]
-            
-        return None
-    
-    def _is_workflow_state(self, key, value):
-        """
-        Determine if a key-value pair represents a workflow state using data structure analysis.
-        Completely adaptive - no hardcoded patterns.
-        """
-        if not isinstance(value, dict):
-            return False
-        
-        # Skip core system fields that are not workflows
-        system_fields = {"user_message", "intent", "conversation_history", "user_profile", 
-                        "response", "user_id", "session_token", "is_authenticated", 
-                        "auth_required", "pending_workflow", "thread_id", "current_workflow", 
-                        "workflow_history", "confidence", "workflow_output_text", 
-                        "workflow_output_json", "workflow_error", "error_recovery_options"}
-        
-        if key in system_fields:
-            return False
-        
-        # Analyze the data structure to determine if it's workflow-like
-        return self._analyze_structure_for_workflow_patterns(value)
-    
-    def _extract_widget_data_dynamically(self, workflow_name, workflow_state):
-        """
-        Extract all non-null data from workflow state - completely adaptive.
-        No hardcoded field filtering.
-        """
-        widget_data = {"type": workflow_name}
-        
-        # Include ALL fields that have meaningful values
-        for field, value in workflow_state.items():
-            if self._is_meaningful_value(value):
-                widget_data[field] = value
-        
-        # Only return if we found meaningful data beyond the type
-        return widget_data if len(widget_data) > 1 else None
-    
-    def _format_workflow_result(self, data):
-        """
-        Format direct workflow result data - completely adaptive.
-        """
-        # Use a generic type since we don't hardcode workflow detection
-        return {
-            "type": "workflow_result",
-            **{k: v for k, v in data.items() if self._is_meaningful_value(v)}
-        }
-    
-    def _is_workflow_result(self, data):
-        """
-        Detect if data represents a workflow result using structural analysis.
-        No hardcoded patterns.
-        """
-        if not isinstance(data, dict):
-            return False
-        
-        return self._analyze_structure_for_workflow_patterns(data)
-    
-    def _analyze_structure_for_workflow_patterns(self, data):
-        """
-        Analyze data structure to determine if it contains workflow-like patterns.
-        Uses structural heuristics instead of hardcoded field names.
-        """
-        if not isinstance(data, dict) or len(data) < 2:
-            return False
-        
-        # Analyze the data structure characteristics
-        has_arrays = any(isinstance(v, list) for v in data.values())
-        has_nested_objects = any(isinstance(v, dict) and len(v) > 0 for v in data.values())
-        has_meaningful_data = sum(1 for v in data.values() if self._is_meaningful_value(v)) >= 2
-        
-        # Workflow data typically has:
-        # 1. Arrays (results, items, etc.)
-        # 2. Nested objects (parameters, details, etc.) 
-        # 3. Multiple meaningful fields
-        return has_arrays or (has_nested_objects and has_meaningful_data)
-    
-    def _is_meaningful_value(self, value):
-        """
-        Determine if a value contains meaningful data worth including in widget.
-        """
-        if value is None:
-            return False
-        if isinstance(value, str) and value.strip() == "":
-            return False
-        if isinstance(value, (list, dict)) and len(value) == 0:
-            return False
-        if isinstance(value, (int, float)) and value == 0:
-            return False  # Could be meaningful, but often default values
-        
-        return True
 
     def _make_json_serializable(self, obj):
         """

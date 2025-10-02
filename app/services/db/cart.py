@@ -190,20 +190,24 @@ class CartService:
             updated_at=row[11] or "1970-01-01 00:00:00"  # Default if None
         )
     
-    async def remove_item_from_cart_by_id(self, user_id: int, item_id: int) -> bool:
+    async def remove_item_from_cart_by_id(self, user_id: int, product_id: int) -> bool:
         """Remove an item from the cart."""
-        cart = await self.get_or_create_cart(user_id)
+        try:
+            cart = await self.get_or_create_cart(user_id)
 
-        # Delete the item
-        await self.db_service.execute_query(
-            "DELETE FROM cart_items WHERE id = ? AND cart_id = ?",
-            (item_id, cart.id)
-        )
+            # Delete the item
+            await self.db_service.execute_query(
+                "DELETE FROM cart_items WHERE product_id = ? AND cart_id = ?",
+                (product_id, cart.id)
+            )
 
-        # Update cart totals
-        await self._update_cart_totals(cart.id)
+            # Update cart totals
+            await self._update_cart_totals(cart.id)
 
-        return True
+            return True
+        except Exception as e:
+            print(f"Error in remove_item_from_cart_by_id: {e}")
+            return False
     
     async def clear_cart(self, user_id: int) -> bool:
         """Clear all items from the user's cart."""

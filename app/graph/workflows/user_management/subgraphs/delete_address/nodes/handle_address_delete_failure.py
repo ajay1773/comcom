@@ -3,7 +3,7 @@
 from app.graph.workflows.user_management.types import DeleteAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 async def handle_address_delete_failure_node(state: DeleteAddressState) -> DeleteAddressState:
     """Generate failure response for failed address deletion."""
@@ -67,16 +67,17 @@ async def handle_address_delete_failure_node(state: DeleteAddressState) -> Delet
     state["workflow_output_text"] = failure_message
     
     # Prepare JSON response for frontend
-    state["workflow_output_json"] = {
-        "success": False,
-        "message": "Failed to delete address",
-        "error": error_message,
-        "address_id": address_id,
-        "suggested_actions": [
-            "View all addresses",
-            "Check address ID" if "not found" in error_message.lower() else "Try again",
-            "Add another address first" if "only address" in error_message.lower() else "Contact support if needed"
-        ]
-    }
+    widget_event_emitter.emit(
+        WidgetEventType.DELETE_ADDRESS_FAILURE,
+        {
+            "error": error_message,
+            "address_id": address_id,
+            "suggested_actions": [
+                "View all addresses",
+                "Check address ID" if "not found" in error_message.lower() else "Try again",
+                "Add another address first" if "only address" in error_message.lower() else "Contact support if needed"
+            ]
+        }
+    )
     
     return state

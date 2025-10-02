@@ -2,11 +2,11 @@
 
 from typing import Callable
 from app.models.chat import GlobalState
-from app.services.jwt import JWTService
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from app.core.enums import WorkflowType
+from app.services.auth import auth_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ class AuthMiddlewareService:
     """Pure function auth middleware - reusable, decoupled, robust."""
     
     def __init__(self):
-        self.jwt_service = JWTService
         self.llm_service = llm_service
     
     async def validate_and_execute(
@@ -46,14 +45,15 @@ class AuthMiddlewareService:
             logger.debug("No session token found")
             return await self._handle_missing_token(state, target_workflow)
         
-        # 2. Parse and validate token
+        # 2. Parse and validate token (supports both session tokens and JWT tokens)
         try:
-            token_data = await self.jwt_service.verify_jwt(token)
-            user_id = token_data
+            user = await auth_service.get_user_from_token(token)
             
-            if not user_id:
-                logger.debug("Invalid token - no user_id")
-                return await self._handle_invalid_token(state, target_workflow, "Invalid token format")
+            if not user:
+                logger.debug("Invalid token - no user found")
+                return await self._handle_invalid_token(state, target_workflow, "Invalid token")
+            
+            user_id = user.id
                 
         except Exception as e:
             logger.debug(f"Token validation failed: {e}")

@@ -4,6 +4,8 @@ from app.graph.workflows.product_search.types import ProductSearchState
 from app.models.chat import GlobalState
 from langchain_core.runnables import RunnableConfig
 
+from app.services.widget_events import WidgetEventType, widget_event_emitter
+
 
 async def run_product_search(state: GlobalState, config: RunnableConfig | None = None) -> GlobalState:
     # 1. get or init
@@ -13,7 +15,6 @@ async def run_product_search(state: GlobalState, config: RunnableConfig | None =
         "search_results": [],
         "suggestions": [],
         "result_count": 0,
-        "workflow_widget_json": None,
     })
     
     # 2. Always update search_query with current user_message
@@ -24,5 +25,15 @@ async def run_product_search(state: GlobalState, config: RunnableConfig | None =
     updated_sub_state = cast(ProductSearchState, await subgraph.ainvoke(sub_state))
     # 4. merge back into global
     state["product_search"] = updated_sub_state
-    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", None)
+    # Text response will be automatically extracted by output_handler_node
+    # Emit product search results widget event
+    widget_event_emitter.emit(
+        WidgetEventType.PRODUCT_SEARCH_RESULTS,
+        {
+            "products": updated_sub_state.get("search_results", []),
+            "search_parameters": updated_sub_state.get("search_parameters", {}),
+            "result_count": updated_sub_state.get("result_count", 0),
+            "success_message": updated_sub_state.get("suggestions", [''])[0]
+        }
+    )
     return state

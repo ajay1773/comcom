@@ -40,7 +40,6 @@ async def run_add_address(state: GlobalState, config: RunnableConfig | None = No
     updated_sub_state = cast(AddAddressState, await subgraph.ainvoke(sub_state, config))
     
     # 3. Merge results back into global state
-    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", {})
     state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
     
     return state

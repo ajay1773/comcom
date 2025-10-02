@@ -6,13 +6,12 @@ import {
   LuStar,
 } from "react-icons/lu";
 import AutoResizeInput from "../auto-resize-input";
-import { useChat, useChatStore } from "../../store/chat-store";
+import { useChatStore } from "../../store/chat-store";
 import UserMessage from "../user-message";
 import AssistantMessage from "../assistant-message";
 import PaymentForm from "@/features/place-order/views/payment-form";
 import PaymentStatus from "@/features/place-order/views/payment-status";
 import OrderDetails from "@/features/place-order/views/order-details";
-import type { Product } from "@/features/product-search/types";
 import type { OrderDetails as OrderDetailsType } from "@/features/place-order/types";
 import type { PaymentDetails as PaymentDetailsType } from "@/features/place-order/types";
 import type { PaymentStatusDetails as PaymentStatusDetailsType } from "@/features/place-order/types";
@@ -22,7 +21,9 @@ import type { SigninSuccess as SigninSuccessType } from "@/features/signin/types
 import SigninSuccess from "@/features/signin/views/signin-success";
 import AddToCartSuccess from "@/features/cart-management/views/add-to-cart-success";
 import type { AddToCartSuccess as AddToCartSuccessType } from "@/features/cart-management/types";
-import ProductWindow from "@/features/product-search/views/product-window";
+import ProductWindow, {
+  type ProductWindowProps,
+} from "@/features/product-search/views/product-window";
 import CartDetails from "@/features/cart-management/views/cart-details";
 import type { CartDetails as CartDetailsType } from "@/features/cart-management/types";
 import { Button } from "../ui/button";
@@ -43,6 +44,11 @@ import type {
 } from "@/features/user-management/types";
 import UserAddressesWindow from "@/features/user-management/views/user-addresses-window";
 import { useRef, useEffect } from "react";
+import CheckoutForm from "@/features/cart-management/views/checkout-form";
+import type { CheckoutUIProviderData } from "@/features/cart-management/types";
+import OrdersWindow, {
+  type OrdersWindowProps,
+} from "@/features/cart-management/views/orders-window";
 
 const MoreOptionsDropdown = () => {
   const { setWidgetJson, logout } = useChatStore();
@@ -99,7 +105,7 @@ const ChatWindow = () => {
     sendMessage,
     widgetJson,
     currentStreamingMessageId,
-  } = useChat();
+  } = useChatStore();
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
@@ -172,38 +178,53 @@ const ChatWindow = () => {
   }) => {
     switch (template) {
       case "product_search_results":
-        return <ProductWindow products={payload as Product[]} />;
+        return (
+          <ProductWindow payload={payload as ProductWindowProps["payload"]} />
+        );
       case "order_details":
         return <OrderDetails details={payload as OrderDetailsType} />;
       case "initiate_payment":
         return <PaymentForm details={payload as PaymentDetailsType} />;
       case "payment_status_details":
         return <PaymentStatus details={payload as PaymentStatusDetailsType} />;
-      case "send_login_form":
+      case "signin_form":
         return <SigninForm />;
-      case "send_signup_form":
+      case "signup_form":
         return <SignupForm />;
       case "signup_success":
         return <SigninForm />;
-      case "login_success":
+      case "signin_success":
         return <SigninSuccess details={payload as SigninSuccessType} />;
       case "add_to_cart_success":
         return <AddToCartSuccess details={payload as AddToCartSuccessType} />;
       case "cart_details":
+      case "delete_from_cart_success":
+      case "view_cart_success":
         return <CartDetails details={payload as CartDetailsType} />;
       case "user_profile_details":
         return <UserProfile data={payload as UserProfileData} />;
-      case "user_addresses":
+      case "user_addresses_fetch_success":
+      case "delete_address_success":
+      case "add_address_success":
+      case "edit_address_success":
         return (
           <UserAddressesWindow
             data={
               payload as {
+                message: {
+                  type: string;
+                  text: string;
+                };
                 addresses: UserAddress[];
                 suggested_actions: string[];
               }
             }
           />
         );
+      case "checkout_ui_provider_data":
+        return <CheckoutForm data={payload as CheckoutUIProviderData} />;
+      case "order_view_success":
+        return <OrdersWindow {...(payload as OrdersWindowProps)} />;
       default:
         return <></>;
     }

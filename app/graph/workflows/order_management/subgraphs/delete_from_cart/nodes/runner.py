@@ -5,6 +5,8 @@ from app.models.chat import GlobalState
 from langchain_core.runnables import RunnableConfig
 from app.graph.workflows.order_management.types import DeleteFromCartState
 from app.graph.workflows.order_management.subgraphs.delete_from_cart.graph import DeleteFromCartGraph
+from app.services.widget_events import widget_event_emitter, WidgetEventType
+from app.utils.extract import extract_subgraph_suggestions
 
 
 
@@ -17,6 +19,7 @@ async def run_delete_from_cart(state: GlobalState, config: RunnableConfig | None
     })
 
     # 2. Always update search_query with current user_message
+    sub_state["search_query"] = state.get("user_message", "")
     sub_state["suggestions"] = state.get("suggestions", [])
     sub_state["user_id"] = state.get("user_id", None)
     sub_state["session_token"] = state.get("session_token", None)
@@ -28,6 +31,6 @@ async def run_delete_from_cart(state: GlobalState, config: RunnableConfig | None
     updated_sub_state = cast(DeleteFromCartState, await subgraph.ainvoke(sub_state))
     # 4. merge back into global
     state["delete_from_cart"] = updated_sub_state
-    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", None)
+    # Text response will be automatically extracted by output_handler_node
 
     return state

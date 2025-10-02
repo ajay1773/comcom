@@ -5,6 +5,7 @@ from app.services.db.user import user_service
 from app.services.password import PasswordService
 from app.models.user import UserCreate
 from app.services.llm import llm_service
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 from app.services.db.cart import cart_service
 import logging
 
@@ -18,13 +19,20 @@ async def save_user_details_node(state: SignupWithDetailsState) -> SignupWithDet
     user = state.get("details")    
     if user:
         try:
+
             # Validate required fields exist
             email = user.get("email")
             password = user.get("password")
             first_name = user.get("first_name")
             last_name = user.get("last_name")
             phone = user.get("phone")
+
+            # Check if user already exists
+            already_exists = await user_service.get_user_by_email(cast(str, email))
             
+            if already_exists:
+                raise ValueError("User already exists")
+
             if not all([email, password, first_name, last_name, phone]):
                 raise ValueError("Missing required user details")
             
@@ -55,12 +63,12 @@ async def save_user_details_node(state: SignupWithDetailsState) -> SignupWithDet
             ])
             success_prompt = await llm.ainvoke(success_prompt_template.invoke({"user_message": "User has been successfully signed up."}))
             state['suggestions'] = [cast(str, success_prompt)]
-            state['workflow_widget_json'] = {
-                "template": "signup_success",
-                "payload": {
-                    "message": success_prompt
+            widget_event_emitter.emit(
+                WidgetEventType.SIGNUP_SUCCESS,
+                {
+                    "suggested_actions": ["Sign in"]
                 }
-            }
+            )
 
         except Exception as e:
                 logger.error(f"Error saving user details: {e}", extra={"user_message": state.get("user_message", "")})
@@ -78,10 +86,10 @@ async def save_user_details_node(state: SignupWithDetailsState) -> SignupWithDet
                 ])
                 response = await llm.ainvoke(failure_prompt_template.invoke({"user_message": "Signup has failed.", "error": e}))
                 state['suggestions'] = [cast(str, response)]
-                state['workflow_widget_json'] = {
-                    "template": "signup_failure",
-                    "payload": {
-                        "message": response
+                widget_event_emitter.emit(
+                    WidgetEventType.SIGNUP_FAILURE,
+                    {
+                        "suggested_actions": ["Try again"]
                     }
-                }
+                )
     return state

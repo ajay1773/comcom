@@ -6,7 +6,6 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from app.graph.nodes.orchestrator import orchestrator_node
 from app.graph.nodes.classifier import classifier_node
 from app.graph.nodes.output_handler import output_handler_node
-from app.graph.nodes.error_handler import error_handler_node
 from app.graph.subgraphs.place_order.graph import PlaceOrderGraph
 from app.graph.subgraphs.initiate_payment.graph import InitiatePaymentGraph
 from app.graph.subgraphs.payment_status.graph import PaymentStatusGraph
@@ -28,6 +27,10 @@ from app.graph.workflows.user_management.subgraphs.add_address.nodes.runner impo
 from app.graph.workflows.user_management.subgraphs.edit_address.nodes.runner import run_edit_address
 from app.graph.workflows.user_management.subgraphs.delete_address.nodes.runner import run_delete_address
 from app.graph.workflows.order_management.subgraphs.delete_from_cart.nodes.runner import run_delete_from_cart
+from app.graph.workflows.order_management.subgraphs.checkout.nodes.runner import run_checkout
+from app.graph.workflows.order_management.subgraphs.checkout_ui_provider.nodes.runner import run_checkout_ui_provider
+from app.graph.workflows.order_management.subgraphs.checkout_processor.nodes.runner import run_checkout_processor
+from app.graph.workflows.order_management.subgraphs.order_view.nodes.runner import run_order_view
 
 
 
@@ -39,14 +42,6 @@ def get_next_workflow(state: GlobalState) -> str:
     return state[WorkflowStateKey.CURRENT_WORKFLOW.value]
 
 
-def should_handle_error(state: GlobalState) -> str:
-    """
-    Check if there's a workflow error that needs to be handled.
-    Routes to error_handler if an error exists, otherwise continues to output_handler.
-    """
-    if state.get(WorkflowStateKey.WORKFLOW_ERROR.value):
-        return NodeName.ERROR_HANDLER
-    return NodeName.OUTPUT_HANDLER
 
 
 async def run_auth_protected_add_to_cart(state: GlobalState, config=None) -> GlobalState:
@@ -144,6 +139,43 @@ async def run_auth_protected_delete_address(state: GlobalState, config=None) -> 
     )
 
 
+async def run_auth_protected_checkout(state: GlobalState, config=None) -> GlobalState:
+    """Run checkout with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.CHECKOUT,
+        workflow_runner=run_checkout,
+        config=config
+    )
+
+async def run_auth_protected_checkout_ui_provider(state: GlobalState, config=None) -> GlobalState:
+    """Run checkout UI provider with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.CHECKOUT_UI_PROVIDER,
+        workflow_runner=run_checkout_ui_provider,
+        config=config
+    )
+
+async def run_auth_protected_checkout_processor(state: GlobalState, config=None) -> GlobalState:
+    """Run checkout processor with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.CHECKOUT_PROCESSOR,
+        workflow_runner=run_checkout_processor,
+        config=config
+    )
+
+async def run_auth_protected_order_view(state: GlobalState, config=None) -> GlobalState:
+    """Run order view with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.ORDER_VIEW,
+        workflow_runner=run_order_view,
+        config=config
+    )
+
+
 async def create_base_graph():
     """Create and configure the LangGraph workflow."""
 
@@ -156,7 +188,6 @@ async def create_base_graph():
     graph.add_node(NodeName.ORCHESTRATOR_NODE, orchestrator_node)
     graph.add_node(NodeName.CLASSIFIER_NODE, classifier_node)
     graph.add_node(NodeName.OUTPUT_HANDLER, output_handler_node)
-    graph.add_node(NodeName.ERROR_HANDLER, error_handler_node)
     graph.set_entry_point(NodeName.CLASSIFIER_NODE)
     graph.add_edge(NodeName.CLASSIFIER_NODE, NodeName.ORCHESTRATOR_NODE)
 
@@ -188,6 +219,10 @@ async def create_base_graph():
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW, run_auth_protected_add_address)
     graph.add_node(NodeName.AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW, run_auth_protected_edit_address)
     graph.add_node(NodeName.AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW, run_auth_protected_delete_address)
+    graph.add_node(NodeName.AUTH_PROTECTED_CHECKOUT_WORKFLOW, run_auth_protected_checkout)
+    graph.add_node(NodeName.AUTH_PROTECTED_CHECKOUT_UI_PROVIDER_WORKFLOW, run_auth_protected_checkout_ui_provider)
+    graph.add_node(NodeName.AUTH_PROTECTED_CHECKOUT_PROCESSOR_WORKFLOW, run_auth_protected_checkout_processor)
+    graph.add_node(NodeName.AUTH_PROTECTED_ORDER_VIEW_WORKFLOW, run_auth_protected_order_view)
     # Route to different workflows based on orchestrator's decision
     graph.add_conditional_edges(
         NodeName.ORCHESTRATOR_NODE,
@@ -204,6 +239,10 @@ async def create_base_graph():
             WorkflowType.ADD_ADDRESS_FORM: NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW,
             WorkflowType.EDIT_ADDRESS: NodeName.AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW,
             WorkflowType.DELETE_ADDRESS: NodeName.AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW,
+            WorkflowType.CHECKOUT: NodeName.AUTH_PROTECTED_CHECKOUT_WORKFLOW,
+            WorkflowType.CHECKOUT_UI_PROVIDER: NodeName.AUTH_PROTECTED_CHECKOUT_UI_PROVIDER_WORKFLOW,
+            WorkflowType.CHECKOUT_PROCESSOR: NodeName.AUTH_PROTECTED_CHECKOUT_PROCESSOR_WORKFLOW,
+            WorkflowType.ORDER_VIEW: NodeName.AUTH_PROTECTED_ORDER_VIEW_WORKFLOW,
             # Auth-protected payment workflows
             WorkflowType.INITIATE_PAYMENT: NodeName.INITIATE_PAYMENT_WORKFLOW,
             WorkflowType.PAYMENT_STATUS: NodeName.PAYMENT_STATUS_WORKFLOW,
@@ -217,82 +256,34 @@ async def create_base_graph():
         }
     )
 
-    # Add conditional edges from workflows to check for errors
-    # Auth-protected workflows error handling
-    # graph.add_conditional_edges(
-    #     NodeName.PRODUCT_SEARCH_WORKFLOW,
-    #     should_handle_error,
-    #     {
-    #         NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-    #         NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-    #     }
-    # )
-    # graph.add_conditional_edges(
-    #     NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
-    #     should_handle_error,
-    #     {
-    #         NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-    #         NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-    #     }
-    # )
-    # graph.add_conditional_edges(
-    #     NodeName.ADD_TO_CART_WORKFLOW,
-    #     should_handle_error,
-    #     {
-    #         NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-    #         NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-    #     }
-    # )
-    graph.add_conditional_edges(
-        NodeName.PLACE_ORDER_WORKFLOW,
-        should_handle_error,
-        {
-            NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-            NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-        }
-    )
-    graph.add_conditional_edges(
-        NodeName.INITIATE_PAYMENT_WORKFLOW,
-        should_handle_error,
-        {
-            NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-            NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-        }
-    )
-    graph.add_conditional_edges(
-        NodeName.PAYMENT_STATUS_WORKFLOW,
-        should_handle_error,
-        {
-            NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-            NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-        }
-    )
-    graph.add_conditional_edges(
-        NodeName.FALLBACK_WORKFLOW,
-        should_handle_error,
-        {
-            NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-            NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-        }
-    )
-    # graph.add_conditional_edges(
-    #     NodeName.GENERATE_SIGNIN_FORM_WORKFLOW,
-    #     should_handle_error,
-    #     {
-    #         NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-    #         NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-    #     }
-    # )
-    # graph.add_conditional_edges(
-    #     NodeName.LOGIN_WITH_CREDENTIALS_WORKFLOW,
-    #     should_handle_error,
-    #     {
-    #         NodeName.ERROR_HANDLER: NodeName.ERROR_HANDLER,
-    #         NodeName.OUTPUT_HANDLER: NodeName.OUTPUT_HANDLER
-    #     }
-    # )
-    # Error handler routes back to output handler after processing
-    graph.add_edge(NodeName.ERROR_HANDLER, NodeName.OUTPUT_HANDLER)
+    # Add direct edges from all workflows to output handler
+    # All workflows route directly to output handler at the end
+    
+    # Regular workflows
+    graph.add_edge(NodeName.PRODUCT_SEARCH_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.GENERATE_SIGNIN_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.LOGIN_WITH_CREDENTIALS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.PLACE_ORDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.INITIATE_PAYMENT_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.PAYMENT_STATUS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.FALLBACK_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    
+    # Auth-protected workflows
+    graph.add_edge(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_EDIT_ADDRESS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_CHECKOUT_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_CHECKOUT_UI_PROVIDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_CHECKOUT_PROCESSOR_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_ORDER_VIEW_WORKFLOW, NodeName.OUTPUT_HANDLER)
 
     # Output handler is the final node
     graph.add_edge(NodeName.OUTPUT_HANDLER, END)

@@ -3,8 +3,8 @@
 from app.graph.workflows.user_management.types import DeleteAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
 from app.services.db.user import user_service
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_address_delete_success_node(state: DeleteAddressState) -> DeleteAddressState:
@@ -73,13 +73,16 @@ async def handle_address_delete_success_node(state: DeleteAddressState) -> Delet
 
     addresses = await user_service.get_user_addresses(user_id) if user_id else []
     # Prepare JSON response for frontend
-    state["workflow_widget_json"] = {
-        "template": "user_addresses",
-        "message": {
-            "text": "Address deleted successfully",
-            "type": "success"
-        },
-        "addresses": addresses,
-    }
+
+    widget_event_emitter.emit(
+        WidgetEventType.DELETE_ADDRESS_SUCCESS,
+        {
+            "message": {
+                "text": "Address deleted successfully",
+                "type": "success"
+            },
+            "addresses": addresses,
+        }
+    )
 
     return state

@@ -1,3 +1,5 @@
+import type { UserAddress } from "@/features/user-management/types";
+
 export type CartItem = {
   id: number;
   product_id: number;
@@ -36,17 +38,27 @@ export type CartItemWithProductDetails = CartItem & {
 
 export type AddToCartSuccess = {
   message: unknown;
-  cart_details: CartItem[];
+  cart_items: CartItem[];
   suggested_actions: unknown;
 };
 
 export type CartDetails = {
-  success_message: string;
-  cart_details: CartItemWithProductDetails[];
+  message: {
+    type: string;
+    text: string;
+  };
+  cart_items: CartItemWithProductDetails[];
   cart_summary: {
     item_count: number;
     total_items: number;
     total_value: number;
   };
   suggested_actions: unknown;
+};
+
+export type CheckoutUIProviderData = {
+  product_items: CartItemWithProductDetails[];
+  saved_addresses: UserAddress[];
+  allowed_payment_methods: string[];
+  total_amount: number;
 };

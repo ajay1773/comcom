@@ -7,8 +7,8 @@ from app.services.chat_history_state import get_conversation_context_for_workflo
 
 class ToBeDeletedProductDetails(BaseModel):
     """Product details extracted from user prompt."""
-    product_name: str
-    brand: str
+    name: str
+    brand: str | None = None
     size: str | None = None
 
 async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -> DeleteFromCartState:
@@ -40,36 +40,43 @@ async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -
 
         TASK:
         Extract these EXACT fields:
-        - product_name: The complete product name as mentioned (e.g., "Summer Breeze T-shirt", "Aliceblue Sweater")
-        - brand: The brand name as mentioned (e.g., "Nike", "Mclaughlin-Castillo")
+        - name: The complete product name as mentioned (e.g., "Summer Breeze T-shirt", "Aliceblue Sweater")
+        - brand: The brand name as mentioned (e.g., "Nike", "Mclaughlin-Castillo") - null if not mentioned
         - size: The size if mentioned (e.g., "M", "Large", "10", "XL") - null if not mentioned
 
         EXAMPLES:
         Input: "I'd like to delete the Summer Breeze T-shirt by Nike in size M"
         Output: {{
-            "product_name": "Summer Breeze T-shirt",
+            "name": "Summer Breeze T-shirt",
             "brand": "Nike",
             "size": "M",
         }}
 
         Input: "I want to delete 2 Aliceblue Sweaters by Mclaughlin-Castillo in Large"
         Output: {{
-            "product_name": "Aliceblue Sweater",
+            "name": "Aliceblue Sweater",
             "brand": "Mclaughlin-Castillo",
             "size": "Large",
         }}
 
-        Input: "Delete the Red Dress by Fashion Co from my cart"
+        Input: "Delete the Red Dress by Fashion Co from my cart" - note that brand is null if not mentioned
         Output: {{
-            "product_name": "Red Dress",
-            "brand": "Fashion Co",
+            "name": "Red Dress",
+            "brand": null,
+            "size": null,
+        }}
+
+        Input: "I want you to delete Mediumpurple Jacket from my cart" - note that brand is null if not mentioned
+        Output: {{
+            "name": "Mediumpurple Jacket",
+            "brand": null,
             "size": null,
         }}
 
         RULES:
         1. Extract EXACT names as they appear in the text
         2. Include the full product name with color if mentioned
-        3. Keep brand names exactly as written
+        3. Keep brand names exactly as written - null if not mentioned
         4. Extract size only if explicitly mentioned (L, XL, 10, Small, etc.)
         5. Do not add or remove any words from the names
         7. If conversation context is available, consider user's previous preferences when extracting details

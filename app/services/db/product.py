@@ -36,13 +36,19 @@ class ProductService:
         if product_details.get("price_min"):
             conditions.append("price >= ?")
             params.append(product_details["price_min"])
+        
+        if product_details.get("brand"):
+            conditions.append("brand LIKE ?")
+            params.append(f"%{product_details['brand']}%")
 
         query = "SELECT * FROM products"
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
-        query += " LIMIT 10"
 
-        results = await db_service.execute_query(query, params)
+        # Convert params list to tuple for proper parameter binding
+        params_tuple = tuple(params) if params else None
+        
+        results = await db_service.execute_query(query, params_tuple)
 
             # Convert results into product dicts
         products = cast(List[Product], [])
@@ -113,7 +119,8 @@ class ProductService:
             query += " WHERE " + " AND ".join(conditions)
         query += " LIMIT 10"
 
-        results = await db_service.execute_query(query, params)
+        # Convert params list to tuple for proper parameter binding
+        results = await db_service.execute_query(query, tuple(params) if params else None)
 
             # Convert results into product dicts
         products = cast(List[Product], [])

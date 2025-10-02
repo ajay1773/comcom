@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCallback, useState } from "react";
-import { useChat } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 import { Separator } from "@/components/ui/separator";
 import { FaCartArrowDown } from "react-icons/fa6";
 
@@ -13,7 +13,7 @@ type OrderDetailsProps = {
 };
 
 const OrderDetails = ({ details }: OrderDetailsProps) => {
-  const { sendMessage } = useChat();
+  const { sendMessage } = useChatStore();
   const [selectedAddressId, setSelectedAddressId] = useState(
     details.addresses[0]?.id
   );

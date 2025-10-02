@@ -27,8 +27,6 @@ async def run_view_cart(state: GlobalState, config: RunnableConfig | None = None
     # 4. merge back into global state
     state["view_cart"] = updated_sub_state
     
-    # 5. Set the workflow widget JSON at global level for stream service
-    if updated_sub_state.get("workflow_widget_json"):
-        state["workflow_widget_json"] = updated_sub_state["workflow_widget_json"]
+    # Text response will be automatically extracted by output_handler_node
 
     return state

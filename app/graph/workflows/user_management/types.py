@@ -9,7 +9,6 @@ class UserProfileState(CommonState, AuthState):
     user_orders: List[Dict[str, Any]]
     user_addresses: List[UserAddress]
     workflow_output_text: str | None
-    workflow_output_json: Dict[str, Any] | None
     error_message: str | None
     profile_fetch_success: bool
 
@@ -18,7 +17,6 @@ class UserAddressesState(CommonState, AuthState):
     """State for user addresses management workflow."""
     user_addresses: List[UserAddress]
     workflow_output_text: str | None
-    workflow_output_json: Dict[str, Any] | None
     error_message: str | None
     addresses_fetch_success: bool
 
@@ -28,7 +26,6 @@ class AddAddressState(CommonState, AuthState):
     extracted_address: Dict[str, Any] | None
     address_save_success: bool
     workflow_output_text: str | None
-    workflow_output_json: Dict[str, Any] | None
     error_message: str | None
 
 
@@ -39,7 +36,6 @@ class EditAddressState(CommonState, AuthState):
     existing_address: Dict[str, Any] | None
     address_edit_success: bool
     workflow_output_text: str | None
-    workflow_output_json: Dict[str, Any] | None
     error_message: str | None
 
 
@@ -50,5 +46,4 @@ class DeleteAddressState(CommonState, AuthState):
     existing_address: Dict[str, Any] | None
     address_delete_success: bool
     workflow_output_text: str | None
-    workflow_output_json: Dict[str, Any] | None
     error_message: str | None

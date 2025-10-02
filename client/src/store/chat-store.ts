@@ -3,6 +3,20 @@ import type { ChatChunkResponse, Message, ToolStatus } from "../types/chat";
 import { EVENT_EMITTER_ADD_WORKFLOW_JSON } from "@/config";
 import emitter from "@/core/event-emitter";
 
+// Conversation types
+export interface Conversation {
+  id: number;
+  thread_id: string;
+  user_id: number | null;
+  title: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  last_message_at: string | null;
+  message_count: number;
+  is_archived: boolean;
+  is_favorite: boolean;
+}
+
 interface ChatState {
   messages: Message[];
   isLoading: boolean;
@@ -18,6 +32,11 @@ interface ChatState {
     first_name: string;
     last_name: string;
   } | null;
+
+  // Conversation management
+  conversations: Conversation[];
+  currentConversation: Conversation | null;
+  conversationsLoading: boolean;
 
   // Actions
   addMessage: (message: Message) => void;
@@ -51,6 +70,38 @@ interface ChatState {
     apiBaseUrl?: string
   ) => Promise<void>;
 
+  // Conversation management actions
+  loadConversations: (apiBaseUrl?: string) => Promise<void>;
+  createNewConversation: (apiBaseUrl?: string) => Promise<string>;
+  loadConversationById: (
+    conversationId: number,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+  switchConversation: (threadId: string, apiBaseUrl?: string) => Promise<void>;
+  switchConversationById: (
+    conversationId: number,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+  updateConversationTitle: (
+    conversationId: number,
+    title: string,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+  archiveConversation: (
+    conversationId: number,
+    archived: boolean,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+  favoriteConversation: (
+    conversationId: number,
+    favorite: boolean,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+  deleteConversation: (
+    conversationId: number,
+    apiBaseUrl?: string
+  ) => Promise<void>;
+
   // Selectors
   getToolMessageById: (id: string) => Message | undefined;
   getActiveToolMessages: () => Message[];
@@ -71,6 +122,11 @@ const initialState = {
   userDetails: localStorage.getItem("user_details")
     ? JSON.parse(localStorage.getItem("user_details") || "{}")
     : null,
+
+  // Conversation management
+  conversations: [],
+  currentConversation: null,
+  conversationsLoading: false,
 };
 
 export const useChatStore = create<ChatState>()((set, get) => ({
@@ -139,7 +195,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   setToolStatus: (toolStatus) => set({ toolStatus }),
   setDisfluencyMessage: (message) => set({ disfluencyMessage: message }),
 
-  resetChat: () => set(initialState),
+  resetChat: () =>
+    set({
+      ...initialState,
+      // Preserve conversations and user details when resetting chat
+      conversations: get().conversations,
+      userDetails: get().userDetails,
+      currentConversation: null,
+    }),
 
   // Async Actions
   sendMessage: async (
@@ -284,15 +347,24 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                 }
                 break;
 
+              case "widget_event":
+                if (parsed.widget_type && parsed.payload) {
+                  const widgetData = {
+                    template: parsed.widget_type,
+                    payload: parsed.payload,
+                  };
+                  store.setWidgetJson(widgetData);
+                  emitter.emit(EVENT_EMITTER_ADD_WORKFLOW_JSON, widgetData);
+                }
+                break;
+
               case "workflow_widget_json":
+                // Legacy support - will be removed after migration
                 if (
                   parsed.json &&
                   parsed.json.template &&
                   parsed.json.payload
                 ) {
-                  // const templatePayload = extractTemplatePayload(
-                  //   JSON.stringify(parsed.json)
-                  // );
                   const templatePayload = parsed.json;
                   store.setWidgetJson(
                     templatePayload ?? { template: "", payload: {} }
@@ -388,17 +460,29 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     };
 
     try {
+      // TODO: This endpoint doesn't exist yet - we need to create it
+      // It should retrieve messages from LangGraph checkpointer using thread_id
       const response = await fetch(
         `${apiBaseUrl}/api/chat/history/${threadId}`
       );
+
       if (!response.ok) {
+        // If history endpoint doesn't exist, just reset chat without messages
+        if (response.status === 404) {
+          console.log(
+            `📚 No history found for thread ${threadId}, starting fresh`
+          );
+          store.setThreadId(threadId);
+          store.resetChat();
+          return;
+        }
         throw new Error(
           `Failed to load conversation history: ${response.status}`
         );
       }
 
       const data = await response.json();
-      const messages = data.messages.map(
+      const messages = (data.messages || []).map(
         (msg: {
           role: "user" | "assistant";
           content: string;
@@ -420,11 +504,510 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       );
     } catch (error) {
       console.error("Error loading conversation history:", error);
-      store.setError(
-        `Failed to load conversation history: ${
+      // Don't show error to user if it's just missing history
+      if (error instanceof Error && !error.message.includes("404")) {
+        store.setError(`Failed to load conversation history: ${error.message}`);
+      }
+      // Still set the thread ID so new messages work
+      store.setThreadId(threadId);
+      store.resetChat();
+    }
+  },
+
+  // ============================================================================
+  // CONVERSATION MANAGEMENT FUNCTIONS
+  // ============================================================================
+  // These functions interact with the cleaned up conversation API endpoints:
+  // - GET /api/conversations - List user conversations
+  // - GET /api/conversations/id/{id} - Get specific conversation by ID
+  // - PUT /api/conversations/id/{id} - Update conversation metadata
+  // - DELETE /api/conversations/id/{id} - Delete conversation permanently
+  //
+  // All functions use consistent error handling and logging patterns.
+  // ============================================================================
+
+  loadConversations: async (apiBaseUrl = "http://localhost:8000") => {
+    set({ conversationsLoading: true });
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${apiBaseUrl}/api/conversations`, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load conversations: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      set({
+        conversations: data.conversations || [],
+        conversationsLoading: false,
+      });
+
+      console.log(`📚 Loaded ${data.conversations?.length || 0} conversations`);
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+      set({
+        error: `Failed to load conversations: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        conversationsLoading: false,
+        conversations: [], // Reset to empty array on error
+      });
+    }
+  },
+
+  createNewConversation: async () => {
+    const store = get();
+
+    // Generate new thread ID
+    const newThreadId = `chat_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
+    // Reset chat state for new conversation
+    store.resetChat();
+    store.setThreadId(newThreadId);
+
+    // Don't navigate here - let the router handle URL changes
+    // The URL should already be correct (/chat or /chat/new)
+
+    // The conversation will be created automatically when the first message is sent
+    return newThreadId;
+  },
+
+  loadConversationById: async (
+    conversationId: number,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+        {
+          method: "GET",
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to load conversation: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const conversation: Conversation = await response.json();
+
+      // Load the conversation history
+      await get().loadConversationHistory(conversation.thread_id, apiBaseUrl);
+
+      // Set as current conversation
+      set((state) => ({
+        ...state,
+        currentConversation: conversation,
+        threadId: conversation.thread_id,
+      }));
+
+      // Don't update URL here - let the router handle it
+      // The URL should already be correct since we're loading based on the URL
+
+      console.log(
+        `✅ Loaded conversation: ${conversation.title || conversation.id}`
+      );
+    } catch (error) {
+      console.error("Failed to load conversation by ID:", error);
+      get().setError(
+        `Failed to load conversation: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
+      throw error;
+    }
+  },
+
+  switchConversation: async (
+    threadId: string,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      // Find the conversation in the loaded conversations
+      const conversation = store.conversations.find(
+        (conv) => conv.thread_id === threadId
+      );
+
+      if (conversation) {
+        set({ currentConversation: conversation });
+
+        // Update URL
+        if (typeof window !== "undefined" && conversation.id) {
+          window.history.pushState({}, "", `/chat/${conversation.id}`);
+        }
+      }
+
+      // Load conversation history
+      await store.loadConversationHistory(threadId, apiBaseUrl);
+
+      console.log(`🔄 Switched to conversation: ${threadId}`);
+    } catch (error) {
+      console.error("Error switching conversation:", error);
+      store.setError(
+        `Failed to switch conversation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  },
+
+  switchConversationById: async (
+    conversationId: number,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      // Find the conversation in the loaded conversations
+      const conversation = store.conversations.find(
+        (conv) => conv.id === conversationId
+      );
+
+      if (conversation) {
+        set({ currentConversation: conversation });
+
+        // Load conversation history
+        await store.loadConversationHistory(conversation.thread_id, apiBaseUrl);
+
+        // Update URL
+        if (typeof window !== "undefined") {
+          window.history.pushState({}, "", `/chat/${conversationId}`);
+        }
+
+        console.log(`🔄 Switched to conversation ID: ${conversationId}`);
+      } else {
+        // If not found in loaded conversations, try to load it directly
+        // But don't update the URL again to prevent loops
+        const token = localStorage.getItem("jwt_token");
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(
+          `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+          {
+            method: "GET",
+            headers,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load conversation: ${response.status} ${response.statusText}`
+          );
+        }
+
+        const conversation: Conversation = await response.json();
+
+        // Load the conversation history
+        await store.loadConversationHistory(conversation.thread_id, apiBaseUrl);
+
+        // Set as current conversation
+        set((state) => ({
+          ...state,
+          currentConversation: conversation,
+          threadId: conversation.thread_id,
+        }));
+
+        console.log(
+          `✅ Loaded conversation: ${conversation.title || conversation.id}`
+        );
+      }
+    } catch (error) {
+      console.error("Error switching conversation by ID:", error);
+      store.setError(
+        `Failed to switch conversation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  },
+
+  updateConversationTitle: async (
+    conversationId: number,
+    title: string,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ title }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to update conversation title: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const updatedConversation = await response.json();
+
+      // Update conversations list
+      const updatedConversations = store.conversations.map((conv) =>
+        conv.id === conversationId ? updatedConversation : conv
+      );
+
+      set({
+        conversations: updatedConversations,
+        currentConversation:
+          store.currentConversation?.id === conversationId
+            ? updatedConversation
+            : store.currentConversation,
+      });
+
+      console.log(
+        `✏️ Updated conversation title: "${title}" (ID: ${conversationId})`
+      );
+    } catch (error) {
+      console.error("Error updating conversation title:", error);
+      store.setError(
+        `Failed to update conversation title: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      throw error; // Re-throw so UI can handle it
+    }
+  },
+
+  archiveConversation: async (
+    conversationId: number,
+    archived: boolean,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ is_archived: archived }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to ${archived ? "archive" : "unarchive"} conversation: ${
+            response.status
+          } ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const updatedConversation = await response.json();
+
+      // Update conversations list
+      const updatedConversations = store.conversations.map((conv) =>
+        conv.id === conversationId ? updatedConversation : conv
+      );
+
+      set({
+        conversations: updatedConversations,
+        currentConversation:
+          store.currentConversation?.id === conversationId
+            ? updatedConversation
+            : store.currentConversation,
+      });
+
+      console.log(
+        `📦 ${
+          archived ? "Archived" : "Unarchived"
+        } conversation (ID: ${conversationId})`
+      );
+    } catch (error) {
+      console.error("Error archiving conversation:", error);
+      store.setError(
+        `Failed to ${archived ? "archive" : "unarchive"} conversation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      throw error; // Re-throw so UI can handle it
+    }
+  },
+
+  favoriteConversation: async (
+    conversationId: number,
+    favorite: boolean,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ is_favorite: favorite }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to ${favorite ? "favorite" : "unfavorite"} conversation: ${
+            response.status
+          } ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const updatedConversation = await response.json();
+
+      // Update conversations list
+      const updatedConversations = store.conversations.map((conv) =>
+        conv.id === conversationId ? updatedConversation : conv
+      );
+
+      set({
+        conversations: updatedConversations,
+        currentConversation:
+          store.currentConversation?.id === conversationId
+            ? updatedConversation
+            : store.currentConversation,
+      });
+
+      console.log(
+        `⭐ ${
+          favorite ? "Favorited" : "Unfavorited"
+        } conversation (ID: ${conversationId})`
+      );
+    } catch (error) {
+      console.error("Error favoriting conversation:", error);
+      store.setError(
+        `Failed to ${favorite ? "favorite" : "unfavorite"} conversation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      throw error; // Re-throw so UI can handle it
+    }
+  },
+
+  deleteConversation: async (
+    conversationId: number,
+    apiBaseUrl = "http://localhost:8000"
+  ) => {
+    const store = get();
+
+    try {
+      const token = localStorage.getItem("jwt_token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(
+        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
+        {
+          method: "DELETE",
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `Failed to delete conversation: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      // Remove from conversations list
+      const updatedConversations = store.conversations.filter(
+        (conv) => conv.id !== conversationId
+      );
+
+      set({ conversations: updatedConversations });
+
+      // If this was the current conversation, reset chat and navigate to new chat
+      if (store.currentConversation?.id === conversationId) {
+        store.resetChat();
+        set({ currentConversation: null });
+
+        // Navigate to new chat
+        if (typeof window !== "undefined") {
+          window.history.pushState({}, "", "/chat");
+        }
+      }
+
+      console.log(`🗑️ Deleted conversation (ID: ${conversationId})`);
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      store.setError(
+        `Failed to delete conversation: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      throw error; // Re-throw so UI can handle it
     }
   },
 
@@ -455,6 +1038,3 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 }));
 
 // Export the store hook for easy access
-export const useChat = () => {
-  return useChatStore();
-};

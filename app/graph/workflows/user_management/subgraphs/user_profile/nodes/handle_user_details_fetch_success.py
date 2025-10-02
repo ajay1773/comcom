@@ -3,7 +3,7 @@
 from app.graph.workflows.user_management.types import UserProfileState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-from typing import Dict, Any
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_user_details_fetch_success_node(state: UserProfileState) -> UserProfileState:
@@ -11,7 +11,24 @@ async def handle_user_details_fetch_success_node(state: UserProfileState) -> Use
 
     # Generate contextual success response using LLM
     success_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant showing a user their profile details.
+        ("system", """# System Prompt - Role Section for E-commerce Chatbot
+
+        ## Your Role
+
+        You are a friendly and knowledgeable shopping assistant for COMCOM, designed to help customers discover products, make confident purchase decisions, and resolve any issues they encounter. You represent the voice of COMCOM in every interaction.
+
+        ## Your Communication Style
+
+        **Tone & Approach:**
+        - Be warm and welcoming, but respect the customer's time by being efficient
+        - Use conversational language that feels human, not robotic or scripted
+        - Use "I" and "you" to create a personal connection
+
+        **Personalization:**
+        - Use the customer's name when available (naturally, not excessively)
+        - Reference past purchases or browsing history to make relevant suggestions
+        - Remember context from earlier in the conversation
+        - Adapt your approach based on whether they're a first-time visitor or loyal customer
 
         Generate a friendly, informative response displaying their profile information. Keep the response short and concise of 1-2 lines.
 
@@ -102,14 +119,55 @@ async def handle_user_details_fetch_success_node(state: UserProfileState) -> Use
         }
         addresses_dict.append(addr_dict)
 
-    # Set success response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "user_profile_details",
-        "payload": {
-            "success_message": success_message,
-            "user_details": user_details_dict,
-            "user_orders": user_orders,
+    # Convert orders to dictionaries
+    orders_dict = []
+    for order in user_orders:
+        # Initialize items list for this order
+        items_list = []
+        
+        # Process order items
+        for item in order["items"]:
+            item_dict = {
+                "id": item["id"],
+                "product_id": item["product_id"],
+                "name": item["name"],
+                "brand": item["brand"],
+                "size": item["size"],
+                "color": item["color"],
+                "quantity": item["quantity"],
+                "unit_price": item["unit_price"],
+                "total_price": item["total_price"],
+                "status": item["status"],
+                "discount_amount": item["discount_amount"],
+            }
+            items_list.append(item_dict)
+        
+        # Create order dictionary with items included
+        order_dict = {
+            "id": order["id"],
+            "order_number": order["order_number"],
+            "amount": order["amount"],
+            "total_items": order["total_items"],
+            "payment_status": order["payment_status"],
+            "payment_method": order["payment_method"],
+            "shipping_address_id": order["shipping_address_id"],
+            "notes": order["notes"],
+            "created_at": order["created_at"] if order["created_at"] else None,
+            "updated_at": order["updated_at"] if order["updated_at"] else None,
+            "items": items_list
+        }
+        orders_dict.append(order_dict)
+
+
+    # Emit user profile details widget event
+
+    widget_event_emitter.emit(
+        WidgetEventType.USER_PROFILE_DETAILS,
+        {
+            "user_details": user_details_dict if user_details_dict else {},
+            "user_orders": orders_dict,
             "user_addresses": addresses_dict,
+            "success_message": success_message,
             "profile_summary": {
                 "total_orders": len(user_orders),
                 "total_addresses": len(user_addresses),
@@ -122,7 +180,7 @@ async def handle_user_details_fetch_success_node(state: UserProfileState) -> Use
                 "Continue shopping"
             ]
         }
-    }
+    )
 
     # Set LLM text response
     state["workflow_output_text"] = success_message

@@ -24,5 +24,4 @@ class ProductSearchState(TypedDict):
     search_results: List[Product]
     suggestions: List[str]
     result_count: int
-    workflow_widget_json: Dict[str, Any]
 

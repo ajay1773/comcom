@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useCallback } from "react";
-import { useChat } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 import "./style.css";
 
 const formSchema = z.object({
@@ -59,7 +59,7 @@ const formSchema = z.object({
 type SignupFormData = z.infer<typeof formSchema>;
 
 const SignupForm = () => {
-  const { sendMessage } = useChat();
+  const { sendMessage } = useChatStore();
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(formSchema),

@@ -7,7 +7,8 @@ from typing_extensions import TypedDict
 
 from app.graph.workflows.signup.types import GenerateSignupFormState, SignupWithDetailsState
 from app.graph.workflows.auth_middleware.types import AuthMiddlewareState
-from app.graph.workflows.order_management.types import AddToCartState, DeleteFromCartState, ViewCartState
+from app.graph.workflows.order_management.types import AddToCartState, CheckoutState, DeleteFromCartState, ViewCartState
+from app.graph.workflows.user_management.types import UserAddressesState, EditAddressState, DeleteAddressState, UserProfileState
 
 
 
@@ -32,7 +33,6 @@ class GlobalState(TypedDict):
     user_message: str
     intent: str | None
     conversation_history: list[str]
-    user_profile: dict
     response: str | None
 
     # Auth
@@ -52,7 +52,6 @@ class GlobalState(TypedDict):
     # Outputs
     workflow_output_text: str | None
     workflow_output_json: dict | None
-    workflow_widget_json: dict | None
 
     # Errors
     workflow_error: dict[str, Any] | None
@@ -68,6 +67,11 @@ class GlobalState(TypedDict):
     add_to_cart: AddToCartState | None
     view_cart: ViewCartState | None
     delete_from_cart: DeleteFromCartState | None
+    user_addresses: UserAddressesState | None
+    edit_address: EditAddressState | None
+    delete_address: DeleteAddressState | None
+    user_profile: UserProfileState | None
+    checkout: CheckoutState | None
 # ChatState removed - not used in the codebase
 
 

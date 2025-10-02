@@ -24,19 +24,30 @@ DISFLUENCY_MAP = {
     "payment_status": "Processing your payment request...",
     "support_query": "Looking into support options for you...",
     "faq": "Finding an answer for you...",
-    "smalltalk": "Let's have a quick chat...",
-    "unknown": "Trying to understand your request...",
+    "smalltalk": "Let me help you with that...",
+    "unknown": "Let me understand what you need...",
     "generate_signin_form": "Processing your signin request...",
     "login_with_credentials": "Processing your login request...",
     "generate_signup_form": "Processing your signup request...",
     "signup_with_details": "Creating your account...",
+    "add_to_cart": "Adding your product to cart...",
     "view_cart": "Retrieving your cart details...",
     "delete_from_cart": "Removing your item from cart...",
     "user_profile": "Fetching your profile details...",
     "user_addresses": "Retrieving your saved addresses...",
     "add_address_form": "Saving your address...",
     "edit_address": "Updating your address...",
-    "delete_address": "Removing your address..."
+    "delete_address": "Removing your address...",
+    "checkout": "Processing your checkout request...",
+    "checkout_ui_provider": "Preparing your checkout options...",
+    "checkout_processor": "Processing your checkout submission...",
+    "order_view": "Retrieving your order information...",
+    # Enhanced fallback conversation types
+    "greeting": "Hello! Let me help you...",
+    "capabilities": "Let me show you what I can do...",
+    "farewell": "Thank you for shopping with us...",
+    "out_of_scope": "Let me redirect you to our services...",
+    "fallback": "Let me help you with your shopping needs..."
 }
 
 parser = PydanticOutputParser(pydantic_object=IntentClassification)
@@ -64,25 +75,8 @@ async def classifier_node(state: GlobalState) -> GlobalState:
     # Get conversation context for better intent classification
     conversation_context = get_conversation_context_for_workflow(state, limit=5)
 
-    # Build context-aware prompt
-    context_section = ""
-    if conversation_context:
-        context_section = f"""
-        CONVERSATION CONTEXT:
-        The following is the recent conversation history to help you better understand the user's intent and context:
-
-        {conversation_context}
-
-        Use this context to:
-        - Understand if this is a continuation of a previous conversation
-        - Identify references to previously mentioned products or workflows
-        - Better classify the user's current intent based on conversation flow
-        - Detect if the user is referring back to previous interactions
-        """
-
-    # Create dynamic prompt with conversation context
-    dynamic_classifier_prompt = ChatPromptTemplate.from_messages([
-        ("system", f"""
+    # Build the system prompt content
+    system_prompt_content = """
         You are an intent classifier and disfluency message generator.
 
         Your task:
@@ -169,6 +163,48 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             * "I want to remove address 5 from my account"
             * "Remove address ID 9"
 
+        - checkout: For general checkout requests (legacy - will route to appropriate subgraph). Use when:
+          * User wants to checkout but the specific intent is unclear
+          * Use as fallback for checkout-related requests
+
+        - checkout_ui_provider: For getting checkout form data and options. Use when:
+          * User wants to see checkout options, prepare checkout, or get checkout form data
+          * User uses phrases like "show checkout options", "prepare checkout", "what are my checkout options"
+          * User wants to see cart items, addresses, and payment methods for checkout
+          * User wants to initiate checkout process (UI preparation)
+          Examples:
+            * "I want to checkout" (initial request)
+            * "Show me checkout options"
+            * "Prepare my checkout"
+            * "What are my payment options for checkout?"
+            * "I want to buy this red Nike shirt" (direct purchase setup)
+            * "Show me my cart for checkout"
+
+        - checkout_processor: For submitting checkout details and completing orders. Use when:
+          * User provides specific checkout submission details (address selection, payment info)
+          * User uses phrases with specific address and payment combinations
+          * User submits checkout form data with selections made
+          Examples:
+            * "Use address 1 and pay with cash on delivery"
+            * "I'll use my first address and credit card 4532-1234-5678-9012, expires 12/25, CVV 123, John Doe"
+            * "Checkout with address ID 3 and cash on delivery"
+            * "Complete checkout: address 2, credit card payment"
+
+        - order_view: For viewing order history and order details. Use when:
+          * User wants to see their order history or details about specific orders
+          * User uses phrases like "show my orders", "view orders", "order history", "my orders", "order status"
+          * User wants to check on a specific order by ID or order number
+          * User wants to track their orders or see past purchases
+          Examples:
+            * "Show me my orders"
+            * "View my order history"
+            * "What orders have I placed?"
+            * "Show order 123"
+            * "Check my order status"
+            * "View order ORD-20240315-ABC12345"
+            * "What's the status of my last order?"
+            * "Show me all my past orders"
+
         - product_search: ONLY for when the user is **browsing, discovering, or asking about product availability/categories**.
         Examples:
           * "Show me blue sweaters for men"
@@ -249,12 +285,37 @@ async def classifier_node(state: GlobalState) -> GlobalState:
           * "I want to sign up with email <email> and password <password> and first name <first_name> and last name <last_name> and phone <phone>"
           * "Let me sign up with email <email> and password <password> and first name <first_name> and last name <last_name> and phone <phone>"
 
-        - support_query: For customer support related queries
-        - faq: For general questions about the service
-        - smalltalk: For casual conversation, general questions about capabilities
-        - unknown: When the intent is unclear
+        - support_query: For customer support related queries like order issues, account problems, technical difficulties
+        
+        - faq: For general questions about policies, shipping, returns, payments, and service information
+          Examples:
+          * "What's your return policy?"
+          * "How long does shipping take?"
+          * "What payment methods do you accept?"
+          * "Do you offer free shipping?"
+          
+        - smalltalk: For casual conversation, greetings, farewells, general questions about capabilities, and friendly chat
+          Examples:
+          * "Hi", "Hello", "Good morning", "Hey there"
+          * "How are you?", "How's it going?"
+          * "What can you help me with?", "What can you do?"
+          * "What do you do?", "Tell me about yourself"
+          * "Goodbye", "Thanks", "See you later", "Bye"
+          * "Tell me about your features", "What are your capabilities?"
+          * "What services do you offer?", "How can you assist me?"
+          * "Nice to meet you", "Thanks for your help"
+          * General friendly conversation that doesn't fit specific categories
+          
+        - unknown: When the intent is unclear, out of scope (non-ecommerce), or doesn't fit other categories
+          Examples:
+          * Requests about weather, news, politics, sports
+          * Programming questions, recipes, travel advice
+          * Unclear or ambiguous messages
+          * Topics unrelated to ecommerce
 
-        IMPORTANT DISTINCTION:
+        IMPORTANT CLASSIFICATION RULES:
+        
+        **Ecommerce Actions (Specific Workflows):**
         - If user is discovering/searching → product_search
         - If user wants to buy a specific product → place_order
         - If user wants to initiate payment for a specific product → initiate_payment
@@ -267,6 +328,19 @@ async def classifier_node(state: GlobalState) -> GlobalState:
         - If user provides address details to save (e.g. "add my address: 123 Main St", "save address", "my address is") → ALWAYS choose add_address_form
         - If user wants to modify an existing address with ID (e.g. "edit address 3", "update address 5", "change address 2") → ALWAYS choose edit_address
         - If user wants to delete an existing address with ID (e.g. "delete address 3", "remove address 7", "delete my address 5") → ALWAYS choose delete_address
+        - If user wants to checkout or complete their purchase:
+          * For initial checkout requests or UI preparation → ALWAYS choose checkout_ui_provider
+          * For specific checkout submissions with address/payment details → ALWAYS choose checkout_processor
+          * For general/unclear checkout requests → choose checkout (will route appropriately)
+        
+        **Conversation & Fallback (Enhanced Handling):**
+        - Greetings like "Hi", "Hello", "Good morning" → smalltalk
+        - Capability questions like "What can you do?", "Help me", "What are your features?" → smalltalk
+        - Farewells like "Goodbye", "Thanks", "See you later" → smalltalk
+        - Policy questions like "What's your return policy?", "Shipping info" → faq
+        - Out-of-scope topics like weather, news, programming, recipes → unknown
+        - Unclear or ambiguous messages that don't fit any category → unknown
+        - Customer support issues (order problems, account issues) → support_query
 
 
         CRITICAL RULES FOR LOGIN INTENTS:
@@ -322,20 +396,51 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             - If intent = add_address_form → "Saving your address..."
             - If intent = edit_address → "Updating your address..."
             - If intent = delete_address → "Removing your address..."
+            - If intent = checkout → "Processing your checkout request..."
+            - If intent = checkout_ui_provider → "Preparing your checkout options..."
+            - If intent = checkout_processor → "Processing your checkout submission..."
+            - If intent = order_view → "Retrieving your order information..."
         3. Provide a confidence score between 0.0 and 1.0 indicating how certain you are about the intent classification.
 
         Output format:
         Return **only valid JSON** with the following fields:
-        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart, user_profile, user_addresses, add_address_form, edit_address, delete_address]
+        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart, user_profile, user_addresses, add_address_form, edit_address, delete_address, checkout, checkout_ui_provider, checkout_processor, order_view]
         - `confidence`: float between 0.0 and 1.0
         - `disfluent_message`: string
 
         Do not include any explanations or text outside of JSON.
-        """ + context_section),
+        """
+
+    # Add conversation context if available
+    if conversation_context:
+        # Escape any curly braces in conversation context to prevent template conflicts
+        escaped_context = conversation_context.replace("{", "{{").replace("}", "}}")
+        system_prompt_content += f"""
+
+        CONVERSATION CONTEXT:
+        The following is the recent conversation history to help you better understand the user's intent and context:
+
+        {escaped_context}
+
+        Use this context to:
+        - Understand if this is a continuation of a previous conversation
+        - Identify references to previously mentioned products or workflows
+        - Better classify the user's current intent based on conversation flow
+        - Detect if the user is referring back to previous interactions
+        """
+
+    # Create dynamic prompt with conversation context
+    dynamic_classifier_prompt = ChatPromptTemplate.from_messages([
+        ("system", system_prompt_content),
         ("user", "{user_message}")
     ])
 
-    llm_response = await llm_service.get_llm_without_tools(disable_streaming=True).with_structured_output(IntentClassification).ainvoke(dynamic_classifier_prompt.invoke({"user_message": user_message}))
+    # First invoke the prompt to get the formatted messages
+    formatted_prompt = dynamic_classifier_prompt.invoke({"user_message": user_message})
+    
+    # Then get the LLM with structured output and invoke it
+    llm_with_structured_output = llm_service.get_llm_without_tools(disable_streaming=True).with_structured_output(IntentClassification)
+    llm_response = await llm_with_structured_output.ainvoke(formatted_prompt)
 
     # Cast to IntentClassification for type safety
     response: IntentClassification = llm_response  # type: ignore

@@ -1,4 +1,4 @@
-import { useChat } from "../../store/chat-store";
+import { useChatStore } from "../../store/chat-store";
 import type { Message } from "../../types/chat";
 
 interface ToolMessageCardProps {
@@ -90,7 +90,7 @@ const ToolMessageCard: React.FC<ToolMessageCardProps> = ({ message }) => {
 };
 
 export const ToolMessages: React.FC = () => {
-  const { getActiveToolMessages, getCompletedToolMessages } = useChat();
+  const { getActiveToolMessages, getCompletedToolMessages } = useChatStore();
 
   const activeTools = getActiveToolMessages();
   const completedTools = getCompletedToolMessages();
@@ -130,11 +130,11 @@ export const ToolMessages: React.FC = () => {
 
 // New component for showing all messages in chronological order
 export const ChatMessagesWithTools: React.FC = () => {
-  const { state } = useChat();
+  const { messages } = useChatStore();
 
   return (
     <div className="chat-messages">
-      {state.messages.map((message) => {
+      {messages.map((message) => {
         if (message.role === "tool") {
           return <ToolMessageCard key={message.id} message={message} />;
         }

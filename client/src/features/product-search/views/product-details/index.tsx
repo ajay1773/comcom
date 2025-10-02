@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { TbShirt } from "react-icons/tb";
-import { useChat } from "@/store/chat-store";
+import { useChatStore } from "@/store/chat-store";
 
 type ProductDetailsProps = {
   product: Product;
@@ -94,7 +94,7 @@ const ICONS = {
 };
 
 const ProductDetails = ({ product }: ProductDetailsProps) => {
-  const { sendMessage } = useChat();
+  const { sendMessage } = useChatStore();
   const [selectedSize, setSelectedSize] = useState<string>("");
 
   const handleSend = useCallback(

@@ -2,77 +2,100 @@ import clsx from "clsx";
 import { useState } from "react";
 import {
   LuBrainCircuit,
-  LuCalendarCheck,
-  LuChevronUp,
+  LuChevronDown,
   LuColumns2,
   LuMessageSquareText,
   LuPlus,
-  LuScanBarcode,
-  LuSearch,
   LuSettings,
   LuRotateCcw,
+  LuUser,
+  LuCircle,
 } from "react-icons/lu";
-import { useChat } from "../../store/chat-store";
+import { useChatStore } from "../../store/chat-store";
+import ConversationList from "../conversation-list";
 
-const navItems: {
-  icon: React.ReactNode;
+// Accordion Section Interface
+interface AccordionSection {
+  id: string;
   title: string;
-  link: string;
-}[] = [
-  {
-    icon: <LuMessageSquareText className="text-blue-500 size-5" />,
-    title: "Chats",
-    link: "/chats",
-  },
-  {
-    icon: <LuSearch className="text-green-500 size-5" />,
-    title: "Search",
-    link: "/search",
-  },
-  {
-    icon: <LuCalendarCheck className="text-purple-500 size-5" />,
-    title: "Manage Subscription",
-    link: "/manage-subscription",
-  },
-  {
-    icon: <LuScanBarcode className="text-orange-500 size-5" />,
-    title: "Updates and FAQ",
-    link: "/updates-and-faq",
-  },
-  {
-    icon: <LuSettings className="text-purple-500 size-5" />,
-    title: "Settings",
-    link: "/settings",
-  },
-];
-
-const chatListItems: {
-  icon: React.ReactNode;
-  title: string;
-  link: string;
-}[] = [
-  {
-    icon: <span className="bg-blue-500 size-5 rounded" />,
-    title: "Favourites",
-    link: "/favourites",
-  },
-  {
-    icon: <span className="bg-amber-600 size-5 rounded" />,
-    title: "Archived",
-    link: "/archived",
-  },
-];
+  icon: React.ComponentType<{ className?: string }>;
+  isOpen: boolean;
+  content: React.ReactNode;
+}
 
 const Sidebar = () => {
-  const { resetChat } = useChat();
-  const [active, setActive] = useState<(typeof navItems)[0]>(navItems[0]);
-  const [chatListActive, setChatListActive] = useState<
-    (typeof chatListItems)[0]
-  >(chatListItems[0]);
-  const [chatListOpen, setChatListOpen] = useState(true);
+  const { resetChat, createNewConversation } = useChatStore();
 
-  const handleNewChat = () => {
-    resetChat();
+  // State for accordion sections
+  const [accordionSections, setAccordionSections] = useState<
+    AccordionSection[]
+  >([
+    {
+      id: "conversations",
+      title: "Conversations",
+      icon: LuMessageSquareText,
+      isOpen: true,
+      content: <ConversationList className="flex-1" />,
+    },
+    {
+      id: "settings",
+      title: "Settings",
+      icon: LuSettings,
+      isOpen: false,
+      content: (
+        <div className="px-4 py-2 space-y-2">
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Theme
+          </button>
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Notifications
+          </button>
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Privacy
+          </button>
+        </div>
+      ),
+    },
+    {
+      id: "profile",
+      title: "Profile",
+      icon: LuUser,
+      isOpen: false,
+      content: (
+        <div className="px-4 py-2 space-y-2">
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Account Info
+          </button>
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Preferences
+          </button>
+        </div>
+      ),
+    },
+    {
+      id: "help",
+      title: "Help & Support",
+      icon: LuCircle,
+      isOpen: false,
+      content: (
+        <div className="px-4 py-2 space-y-2">
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Documentation
+          </button>
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Contact Support
+          </button>
+          <button className="w-full text-left text-sm text-neutral-400 hover:text-white transition-colors py-1">
+            Feedback
+          </button>
+        </div>
+      ),
+    },
+  ]);
+
+  const handleNewChat = async () => {
+    await createNewConversation();
+    // Navigation is handled in the createNewConversation function
   };
 
   const handleResetChat = () => {
@@ -84,10 +107,21 @@ const Sidebar = () => {
       resetChat();
     }
   };
+
+  const toggleAccordionSection = (sectionId: string) => {
+    setAccordionSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId
+          ? { ...section, isOpen: !section.isOpen }
+          : section
+      )
+    );
+  };
   return (
     <div className="bg-transparent w-1/5 h-full">
       <div className="flex flex-col w-full h-full justify-between py-4">
-        <div className="flex flex-col w-full gap-10">
+        <div className="flex flex-col w-full gap-6">
+          {/* Header */}
           <div className="flex w-full justify-between items-center px-6">
             <div className="flex gap-2 items-center">
               <LuBrainCircuit className="text-blue-500 size-[40px]" />
@@ -105,87 +139,69 @@ const Sidebar = () => {
             </div>
           </div>
 
-          <div className="flex flex-col w-full px-6">
-            {navItems.map((item) => (
-              <button
-                className={clsx(
-                  "w-full px-6 py-4 rounded-lg flex items-center justify-start gap-4 hover:bg-neutral-600/10 transition-all duration-300 cursor-pointer",
-                  {
-                    "bg-neutral-600/20 shadow-md": active.link === item.link,
-                  }
-                )}
-                onClick={() => setActive(item)}
-              >
-                {item.icon}
-                <p
-                  className={clsx(
-                    "text-gray-400 text-md font-medium transition-all duration-300",
-                    {
-                      "text-white": active.link === item.link,
-                    }
-                  )}
+          {/* Accordion Sections */}
+          <div className="flex flex-col w-full px-6 flex-1 min-h-0 space-y-2">
+            {accordionSections.map((section) => {
+              const IconComponent = section.icon;
+              return (
+                <div
+                  key={section.id}
+                  className="border border-neutral-800 rounded-lg overflow-hidden"
                 >
-                  {item.title}
-                </p>
-              </button>
-            ))}
-          </div>
+                  {/* Accordion Header */}
+                  <button
+                    className="flex w-full justify-between items-center p-4 hover:bg-neutral-800/30 transition-all duration-200 group"
+                    onClick={() => toggleAccordionSection(section.id)}
+                    aria-expanded={section.isOpen}
+                    aria-controls={`accordion-content-${section.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <IconComponent className="text-neutral-400 group-hover:text-white size-[18px] transition-colors duration-200" />
+                      <span className="text-neutral-300 text-sm font-medium group-hover:text-white transition-colors duration-200">
+                        {section.title}
+                      </span>
+                    </div>
+                    <LuChevronDown
+                      className={clsx(
+                        "text-neutral-400 group-hover:text-white size-[16px] transition-all duration-200",
+                        {
+                          "rotate-180": section.isOpen,
+                        }
+                      )}
+                    />
+                  </button>
 
-          <hr className="w-full border-neutral-800 h-[1px]" />
-
-          <div className="flex flex-col w-full px-6">
-            <button
-              className="flex w-full justify-start items-center gap-4 ml-6 group cursor-pointer mb-4"
-              onClick={() => setChatListOpen(!chatListOpen)}
-            >
-              <LuChevronUp
-                className={clsx(
-                  "text-neutral-700 size-[20px] group-hover:text-neutral-500 transition-all duration-300",
-                  {
-                    "rotate-180": chatListOpen,
-                  }
-                )}
-              />
-              <span className="text-neutral-700 text-sm font-medium group-hover:text-neutral-500 transition-all duration-300">
-                Chat List
-              </span>
-            </button>
-
-            <div
-              className={clsx(
-                "flex flex-col w-full transition-all duration-300",
-                {
-                  hidden: !chatListOpen,
-                }
-              )}
-            >
-              {chatListItems.map((item) => (
-                <button
-                  className={clsx(
-                    "w-full px-6 py-4 rounded-lg flex items-center justify-start gap-4 hover:bg-neutral-600/10 transition-all duration-300 cursor-pointer",
-                    {
-                      "bg-neutral-600/20 shadow-md":
-                        chatListActive.link === item.link,
-                    }
-                  )}
-                  onClick={() => setChatListActive(item)}
-                >
-                  {item.icon}
-                  <p
+                  {/* Accordion Content */}
+                  <div
+                    id={`accordion-content-${section.id}`}
                     className={clsx(
-                      "text-gray-400 text-md font-medium transition-all duration-300",
+                      "overflow-hidden transition-all duration-300 ease-in-out",
                       {
-                        "text-white": chatListActive.link === item.link,
+                        "max-h-0": !section.isOpen,
+                        "max-h-96":
+                          section.isOpen && section.id !== "conversations",
+                        "max-h-full":
+                          section.isOpen && section.id === "conversations",
                       }
                     )}
                   >
-                    {item.title}
-                  </p>
-                </button>
-              ))}
-            </div>
+                    <div className="border-t border-neutral-800">
+                      {section.id === "conversations" ? (
+                        <div className="p-2 max-h-64 overflow-y-auto">
+                          {section.content}
+                        </div>
+                      ) : (
+                        <div className="pb-2">{section.content}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* Footer */}
         <div className="flex flex-col gap-6 px-6">
           <button
             onClick={handleNewChat}

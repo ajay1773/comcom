@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from app.models.user import User, UserCreate, UserAddress
-from app.services.db.db import db_service
+from app.services.db.db import Order, db_service
 
 
 class UserService:
@@ -247,5 +247,4 @@ class UserService:
         except Exception as e:
             print(f"Error setting first address as default: {e}")
             return False
-
 user_service = UserService()

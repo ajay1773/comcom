@@ -5,6 +5,7 @@ from app.graph.workflows.user_management.subgraphs.user_profile.graph import Use
 from app.graph.workflows.user_management.types import UserProfileState
 from app.models.chat import GlobalState
 from langchain_core.runnables import RunnableConfig
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def run_user_profile(state: GlobalState, config: RunnableConfig | None = None) -> GlobalState:
@@ -23,7 +24,6 @@ async def run_user_profile(state: GlobalState, config: RunnableConfig | None = N
     sub_state = cast(UserProfileState, {
         "search_query": state.get("user_message", ""),
         "suggestions": [],
-        "workflow_widget_json": {},
         "user_id": state.get("user_id"),
         "session_token": state.get("session_token"),
         "is_authenticated": state.get("is_authenticated", False),
@@ -42,11 +42,6 @@ async def run_user_profile(state: GlobalState, config: RunnableConfig | None = N
     updated_sub_state = cast(UserProfileState, await subgraph.ainvoke(sub_state, config))
     
     # 3. Merge results back into global state
-    state["workflow_widget_json"] = updated_sub_state.get("workflow_widget_json", {})
     state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
-    
-    # Set error if profile fetch failed
-    if updated_sub_state.get("error_message"):
-        state["workflow_error"] = updated_sub_state.get("error_message")
-    
+        
     return state

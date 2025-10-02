@@ -3,6 +3,7 @@
 from app.graph.workflows.user_management.types import UserAddressesState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_addresses_fetch_failure_node(state: UserAddressesState) -> UserAddressesState:
@@ -48,9 +49,9 @@ async def handle_addresses_fetch_failure_node(state: UserAddressesState) -> User
         failure_message = "I'm sorry, but I'm having trouble retrieving your saved addresses right now. Please try again in a few moments, or let me know if you need help with something else."
 
     # Set failure response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "error_message",
-        "payload": {
+    widget_event_emitter.emit(
+        WidgetEventType.USER_ADDRESSES_FETCH_FAILURE,
+        {
             "error_message": failure_message,
             "error_type": "addresses_fetch_error",
             "suggested_actions": [
@@ -61,7 +62,7 @@ async def handle_addresses_fetch_failure_node(state: UserAddressesState) -> User
             ],
             "retry_available": True
         }
-    }
+    )
 
     # Set LLM text response
     state["workflow_output_text"] = failure_message

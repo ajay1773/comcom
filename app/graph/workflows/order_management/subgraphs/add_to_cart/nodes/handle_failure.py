@@ -12,10 +12,37 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
     product_details = state.get("product_details", {})
     user_query = state.get("search_query", "")
     
+    if len(product_details.keys()) == 0:
+        error_message = "I couldn't find that product in our inventory. Please try searching for it first or check the spelling."
+    
     # Generate contextual failure response using LLM
     failure_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant handling add-to-cart failures.
-        
+        ("system", """# System Prompt - Role Section for E-commerce Chatbot
+
+        ## Your Role
+
+        You are a friendly and knowledgeable shopping assistant for COMCOM, designed to help customers discover products, make confident purchase decisions, and resolve any issues they encounter.
+
+        ## Your Communication Style
+
+        **Empathy & Understanding:**
+        - Acknowledge customer emotions and concerns ("I understand how frustrating that must be...")
+        - Show genuine care when customers face issues ("Let me make this right for you")
+        - Be patient with questions, no matter how many times they're asked
+
+        **Language Guidelines:**
+        - Keep responses clear, concise, and easy to understand
+        - Avoid jargon unless the customer uses it first
+        - Use positive framing ("Here's what I can do..." instead of "I can't do that, but...")
+
+        ## Problem-Solving Approach
+
+        When customers face issues:
+        1. **Acknowledge** - Validate their concern immediately
+        2. **Apologize** - When appropriate, offer a sincere apology on behalf of the company
+        3. **Act** - Provide a clear solution or next step
+        4. **Assure** - Confirm the issue is resolved or being handled
+
         Generate a friendly, empathetic response when adding an item to cart fails.
         
         Guidelines:
@@ -49,6 +76,8 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
         }))
         
         failure_message = str(response.content).strip()
+
+        state["suggestions"] = [failure_message]
         
     except Exception:
         # Fallback failure message if LLM fails
@@ -60,26 +89,7 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
             failure_message = "I couldn't find that product in our inventory. Please try searching for it first or check the spelling."
         else:
             failure_message = "I encountered an issue adding the item to your cart. Please try again in a moment."
-    
-    # Determine recovery options based on error type
-    if "authentication" in error_message.lower() or "user" in error_message.lower():
-        recovery_options = ["Sign in to your account", "Create a new account"]
-    elif not product_details:
-        recovery_options = ["Search for products", "Browse categories", "Check spelling"]
-    elif "missing" in error_message.lower():
-        recovery_options = ["Provide product name and brand", "Search first then add"]
-    else:
-        recovery_options = ["Try again", "Refresh page", "Contact support"]
-    
-    # Set failure response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "error_message",
-        "payload": {
-            "error_type": "add_to_cart_failure",
-            "error_message": failure_message,
-            "recovery_options": recovery_options,
-            "workflow_name": "add_to_cart"
-        }
-    }
+        
+        state["suggestions"] = [failure_message]
     
     return state

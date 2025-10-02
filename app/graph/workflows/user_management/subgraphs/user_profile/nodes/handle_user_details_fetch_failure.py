@@ -10,22 +10,37 @@ async def handle_user_details_fetch_failure_node(state: UserProfileState) -> Use
 
     # Generate contextual failure response using LLM
     failure_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a helpful e-commerce assistant handling an error when trying to fetch user profile details.
+        ("system", """You are a seasoned fashion consultant with deep expertise in style, fit, and trends. Your communication style is sophisticated yet approachable, like a personal stylist who genuinely cares about helping customers find perfect matches.
 
-        Generate a short one line friendly, apologetic response explaining that there was an issue retrieving their profile information.
+        Personality attributes:
+        - Analytical and detail-oriented about product features
+        - Educated in fabrics, sizing, and style combinations
+        - Diplomatic when suggesting alternatives
+        - Builds trust through knowledgeable recommendations
+        - Uses fashion terminology appropriately but explains when needed
+        - Focuses on helping customers discover their personal style
+
+        You're not just selling products - you're curating experiences and building confidence.
+
+        Handle an error when trying to access a client's style profile with professional care.
+        Format your response in markdown for better readability.
+
+        Generate a short, warm, apologetic response explaining the style profile access issue.
 
         Guidelines:
-        - Be apologetic but reassuring
-        - Keep the response short and concise of 1-2 lines
+        - Be apologetic but reassuring with fashion consultant warmth
+        - Keep the response short and concise (1-2 lines)
         - Don't reveal technical details about the error
+        - Maintain your professional styling expertise
+        - Show you still care about their style journey
 
         Context:
-        - Error occurred while fetching profile details
-        - User was trying to view their profile information
+        - Error occurred while accessing style profile details
+        - Client was trying to view their style profile information
         - Error message: {error_message}
 
         """),
-        ("user", """Please generate a friendly response explaining the profile fetch error.""")
+        ("user", """Please generate a warm, professional response explaining the style profile access issue.""")
     ])
 
     try:
@@ -42,23 +57,7 @@ async def handle_user_details_fetch_failure_node(state: UserProfileState) -> Use
     except Exception as e:
         print(f"Error in handle_user_details_fetch_failure_node: {e}")
         # Fallback failure message if LLM fails
-        failure_message = "I'm sorry, but I'm having trouble retrieving your profile details right now. Please try again in a few moments, or let me know if you need help with something else."
-
-    # Set failure response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "error_message",
-        "payload": {
-            "error_message": failure_message,
-            "error_type": "profile_fetch_error",
-            "suggested_actions": [
-                "Try again later",
-                "Contact customer support",
-                "Continue shopping",
-                "View your cart"
-            ],
-            "retry_available": True
-        }
-    }
+        failure_message = "**I apologize, but I'm having a small issue accessing your style profile right now.** Please try again in a moment, or *let me help you with something else while we resolve this.*"
 
     # Set LLM text response
     state["workflow_output_text"] = failure_message

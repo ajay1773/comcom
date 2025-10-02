@@ -1,6 +1,7 @@
 from app.models.chat import GlobalState
 from app.services.workflow_state import get_workflow_state, update_workflow_state
-from app.services.db.order import order_service, Order
+from app.services.db.order import order_service
+from app.services.db.db import Order
 import uuid
 import datetime
 
@@ -12,17 +13,26 @@ async def make_payment_node(state: GlobalState) -> GlobalState:
     # Get workflow-specific state
     workflow_state = get_workflow_state(state, "place_order")
     selected_product = workflow_state.get("selected_product", {})
+    user_id = state.get("user_id", 1)
 
     # Get authenticated user ID
     user_id = state.get("user_id", 1)  # Fallback to 1 for backward compatibility
+    if not user_id:
+        raise ValueError("User ID is required")
 
-    await order_service.create_order(Order(
-        product_id=selected_product.get("id", 0),
-        quantity=selected_product.get("quantity", 1),  # Default to 1 instead of 0
-        price=selected_product.get("price", 100),
-        user_id=user_id,
-        status="paid"
-    ))
+    await order_service.create_order(user_id, [selected_product], 0, "credit_card", "Payment for order")
+    # await order_service.create_order(Order(
+    #     order_number=selected_product.get("id", 0),
+    #     status="paid",
+    #     amount=selected_product.get("price", 100),
+    #     total_items=selected_product.get("quantity", 1),
+    #     payment_status="paid",
+    #     payment_method="credit_card",
+    #     shipping_address_id=0,
+    #     notes="Payment for order",
+    #     created_at=datetime.datetime.now().isoformat(),
+    #     updated_at=datetime.datetime.now    ().isoformat()
+    # ))
 
     # Prepare order details JSON
     payment_status_details = {

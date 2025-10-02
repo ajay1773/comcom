@@ -3,8 +3,8 @@
 from app.graph.workflows.user_management.types import EditAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
-
 from app.services.db.user import user_service
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_address_edit_success_node(state: EditAddressState) -> EditAddressState:
@@ -64,9 +64,10 @@ async def handle_address_edit_success_node(state: EditAddressState) -> EditAddre
 
     # Prepare JSON response for frontend
     addresses = await user_service.get_user_addresses(user_id) if user_id else []
-    state["workflow_widget_json"] = {
-        "template": "user_addresses",
-        "payload": {
+
+    widget_event_emitter.emit(
+        WidgetEventType.EDIT_ADDRESS_SUCCESS,
+        {
             "message": {
                 "text": "Your address has been successfully updated.",
                 "type": "success"
@@ -78,6 +79,6 @@ async def handle_address_edit_success_node(state: EditAddressState) -> EditAddre
                 "Set a different default address"
             ]
         }
-    }
+    )
 
     return state

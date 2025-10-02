@@ -6,11 +6,35 @@ from app.models.user import UserSession
 
 
 class Order(BaseModel):
-    product_id: int
+    id: int | None = None
     user_id: int
+    order_number: str
+    status: str  # pending, confirmed, processing, shipped, delivered, cancelled
+    amount: float
+    total_items: int
+    currency: str = "USD"
+    payment_status: str  # pending, paid, failed, refunded
+    payment_method: str | None = None
+    shipping_address_id: int | None = None
+    notes: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+class OrderItem(BaseModel):
+    id: int | None = None
+    order_id: int
+    product_id: int
+    name: str
+    brand: str
     quantity: int
-    price: float
-    status: str
+    unit_price: float
+    total_price: float
+    size: str | None = None
+    color: str | None = None
+    status: str = "pending"  # pending, confirmed, shipped, delivered, cancelled
+    discount_amount: float = 0.0
+    created_at: str | None = None
+    updated_at: str | None = None
 
 class Product(BaseModel):
     id: int
@@ -55,6 +79,7 @@ class CartItem(BaseModel):
 
 class CartItemWithProductDetails(CartItem):
     product_details: Product | None
+
 class CartItemCreate(BaseModel):
     product_id: int
     quantity: int
@@ -63,6 +88,19 @@ class CartItemCreate(BaseModel):
     color: str | None = None
     unit: str | None = None
     selected_options: str | None = None
+
+class Conversation(BaseModel):
+    """Model for conversation metadata."""
+    id: int | None = None
+    thread_id: str
+    user_id: int | None = None
+    title: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    last_message_at: str | None = None
+    message_count: int = 0
+    is_archived: bool = False
+    is_favorite: bool = False
 
 class DatabaseService:
     """Service for database operations."""
@@ -213,14 +251,58 @@ class DatabaseService:
         create_orders_table = """
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL CHECK(quantity > 0),
-            price REAL NOT NULL CHECK(price > 0),
-            status TEXT NOT NULL DEFAULT 'pending',
+            order_number TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled')),
+            amount REAL NOT NULL CHECK(amount >= 0),
+            total_items INTEGER NOT NULL DEFAULT 0 CHECK(total_items >= 0),
+            currency TEXT NOT NULL DEFAULT 'USD',
+            payment_status TEXT NOT NULL DEFAULT 'pending' CHECK(payment_status IN ('pending', 'paid', 'failed', 'refunded')),
+            payment_method TEXT,
+            shipping_address_id INTEGER,
+            notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (shipping_address_id) REFERENCES user_addresses (id) ON DELETE SET NULL
+        )
+        """
+
+        # Create order_items table
+        create_order_items_table = """
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            brand TEXT NOT NULL,
+            quantity INTEGER NOT NULL CHECK(quantity > 0),
+            unit_price REAL NOT NULL CHECK(unit_price >= 0),
+            total_price REAL NOT NULL CHECK(total_price >= 0),
+            size TEXT,
+            color TEXT,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'confirmed', 'shipped', 'delivered', 'cancelled')),
+            discount_amount REAL NOT NULL DEFAULT 0.0 CHECK(discount_amount >= 0),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+        )
+        """
+
+        # Create conversations table for chat management
+        create_conversations_table = """
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id TEXT UNIQUE NOT NULL,
+            user_id INTEGER,
+            title TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_message_at DATETIME,
+            message_count INTEGER DEFAULT 0,
+            is_archived BOOLEAN DEFAULT FALSE,
+            is_favorite BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
         """
@@ -228,11 +310,13 @@ class DatabaseService:
         # Execute table creation queries separately
         await self.execute_query(create_users_table)
         await self.execute_query(create_sessions_table)
+        await self.execute_query(create_conversations_table)
         await self.execute_query(create_user_carts_table)
         await self.execute_query(create_cart_items_table)
         await self.execute_query(create_addresses_table)
         await self.execute_query(create_products_table)
         await self.execute_query(create_orders_table)
+        await self.execute_query(create_order_items_table)
 
         # Create indexes for better performance
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
@@ -241,20 +325,29 @@ class DatabaseService:
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_addresses_user ON user_addresses(user_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand)")
-        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_order_items_product_id ON order_items(product_id)")
         
         # Cart-related indexes
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_user_carts_user_id ON user_carts(user_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_user_carts_status ON user_carts(status)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_cart_items_cart_id ON cart_items(cart_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_cart_items_product_id ON cart_items(product_id)")
+        
+        # Conversation-related indexes
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_thread_id ON conversations(thread_id)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(is_archived)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_favorite ON conversations(is_favorite)")
 
     async def create_order(self, order: Order):
         """Create an order in the database."""
-        await self.execute_query("INSERT INTO orders (product_id, user_id, quantity, price, status) VALUES (?, ?, ?, ?, ?)",
-                                (order.product_id, order.user_id, order.quantity, order.price, order.status))
+        await self.execute_query("INSERT INTO orders (order_number, user_id, amount, total_items, status) VALUES (?, ?, ?, ?, ?)",
+                                (order.order_number, order.user_id, order.amount, order.total_items, order.status))
 
     # Session management methods
     async def create_session(self, user_id: int, session_token: str, thread_id: str, expires_at) -> None:

@@ -3,6 +3,7 @@
 from app.graph.workflows.order_management.types import AddToCartState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.services.widget_events import widget_event_emitter, WidgetEventType
 
 
 async def handle_failure_node(state: AddToCartState) -> AddToCartState:
@@ -72,14 +73,13 @@ async def handle_failure_node(state: AddToCartState) -> AddToCartState:
         recovery_options = ["Try again", "Refresh page", "Contact support"]
     
     # Set failure response in workflow widget
-    state["workflow_widget_json"] = {
-        "template": "error_message",
-        "payload": {
-            "error_type": "delete_from_cart_failure",
+    widget_event_emitter.emit(
+        WidgetEventType.DELETE_FROM_CART_FAILURE,
+        {
             "error_message": failure_message,
+            "error_type": "delete_from_cart_failure",
             "recovery_options": recovery_options,
-            "workflow_name": "delete_from_cart"
         }
-    }
+    )
     
     return state
