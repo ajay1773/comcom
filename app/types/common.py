@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, TypedDict
+from typing import List, TypedDict
 
 
 class CommonState(TypedDict):
@@ -6,6 +6,7 @@ class CommonState(TypedDict):
     search_query: str
     suggestions: List[str]
     thread_id: str | None
+    conversation_history: List[str]
 
 class AuthState(TypedDict):
     """State for authentication workflows."""

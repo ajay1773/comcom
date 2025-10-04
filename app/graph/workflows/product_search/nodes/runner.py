@@ -15,10 +15,22 @@ async def run_product_search(state: GlobalState, config: RunnableConfig | None =
         "search_results": [],
         "suggestions": [],
         "result_count": 0,
+        "thread_id": None,
+        "conversation_history": [],
+        "user_id": None,
+        "session_token": None,
+        "is_authenticated": False,
+        "auth_required": False,
     })
     
-    # 2. Always update search_query with current user_message
+    # 2. Always update with current context from GlobalState
     sub_state["search_query"] = state.get("user_message", "")
+    sub_state["conversation_history"] = state.get("conversation_history", [])
+    sub_state["thread_id"] = state.get("thread_id", None)
+    sub_state["user_id"] = state.get("user_id", None)
+    sub_state["session_token"] = state.get("session_token", None)
+    sub_state["is_authenticated"] = state.get("is_authenticated", False)
+    sub_state["auth_required"] = state.get("auth_required", False)
 
     # 3. run the subgraph
     subgraph = ProductSearchGraph.create()

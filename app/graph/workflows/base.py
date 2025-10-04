@@ -7,8 +7,6 @@ from app.graph.nodes.orchestrator import orchestrator_node
 from app.graph.nodes.classifier import classifier_node
 from app.graph.nodes.output_handler import output_handler_node
 from app.graph.subgraphs.place_order.graph import PlaceOrderGraph
-from app.graph.subgraphs.initiate_payment.graph import InitiatePaymentGraph
-from app.graph.subgraphs.payment_status.graph import PaymentStatusGraph
 from app.graph.subgraphs.fallback.graph import FallbackGraph
 from app.graph.workflows.signin.subgraphs.generate_signin_form.nodes.runner import run_generate_signin_form
 from app.core.enums import WorkflowType, NodeName, WorkflowStateKey
@@ -192,9 +190,9 @@ async def create_base_graph():
     graph.add_edge(NodeName.CLASSIFIER_NODE, NodeName.ORCHESTRATOR_NODE)
 
     # Create subgraphs (they're already compiled in their create() method)
-    place_order_graph = PlaceOrderGraph.create()
-    initiate_payment_graph = InitiatePaymentGraph.create()
-    payment_status_graph = PaymentStatusGraph.create()
+    # place_order_graph = PlaceOrderGraph.create()
+    # initiate_payment_graph = InitiatePaymentGraph.create()
+    # payment_status_graph = PaymentStatusGraph.create()
     fallback_graph = FallbackGraph.create()
 
     # Add compiled subgraphs as nodes
@@ -202,9 +200,9 @@ async def create_base_graph():
     graph.add_node(NodeName.PRODUCT_SEARCH_WORKFLOW, run_product_search)
     graph.add_node(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, run_generate_signup_form)
     graph.add_node(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, run_signup_with_details)
-    graph.add_node(NodeName.PLACE_ORDER_WORKFLOW, place_order_graph)
-    graph.add_node(NodeName.INITIATE_PAYMENT_WORKFLOW, initiate_payment_graph)
-    graph.add_node(NodeName.PAYMENT_STATUS_WORKFLOW, payment_status_graph)
+    # graph.add_node(NodeName.PLACE_ORDER_WORKFLOW, place_order_graph)
+    # graph.add_node(NodeName.INITIATE_PAYMENT_WORKFLOW, initiate_payment_graph)
+    # graph.add_node(NodeName.PAYMENT_STATUS_WORKFLOW, payment_status_graph)
     graph.add_node(NodeName.FALLBACK_WORKFLOW, fallback_graph)
     graph.add_node(NodeName.GENERATE_SIGNIN_FORM_WORKFLOW, run_generate_signin_form)
     graph.add_node(NodeName.LOGIN_WITH_CREDENTIALS_WORKFLOW, run_login_with_credentials)
@@ -244,8 +242,8 @@ async def create_base_graph():
             WorkflowType.CHECKOUT_PROCESSOR: NodeName.AUTH_PROTECTED_CHECKOUT_PROCESSOR_WORKFLOW,
             WorkflowType.ORDER_VIEW: NodeName.AUTH_PROTECTED_ORDER_VIEW_WORKFLOW,
             # Auth-protected payment workflows
-            WorkflowType.INITIATE_PAYMENT: NodeName.INITIATE_PAYMENT_WORKFLOW,
-            WorkflowType.PAYMENT_STATUS: NodeName.PAYMENT_STATUS_WORKFLOW,
+            # WorkflowType.INITIATE_PAYMENT: NodeName.INITIATE_PAYMENT_WORKFLOW,
+            # WorkflowType.PAYMENT_STATUS: NodeName.PAYMENT_STATUS_WORKFLOW,
             # Public workflows (no auth required)
             WorkflowType.SUPPORT_QUERY: NodeName.FALLBACK_WORKFLOW,
             WorkflowType.FALLBACK: NodeName.FALLBACK_WORKFLOW,
@@ -265,9 +263,9 @@ async def create_base_graph():
     graph.add_edge(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.GENERATE_SIGNIN_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.LOGIN_WITH_CREDENTIALS_WORKFLOW, NodeName.OUTPUT_HANDLER)
-    graph.add_edge(NodeName.PLACE_ORDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
-    graph.add_edge(NodeName.INITIATE_PAYMENT_WORKFLOW, NodeName.OUTPUT_HANDLER)
-    graph.add_edge(NodeName.PAYMENT_STATUS_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    # graph.add_edge(NodeName.PLACE_ORDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    # graph.add_edge(NodeName.INITIATE_PAYMENT_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    # graph.add_edge(NodeName.PAYMENT_STATUS_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.FALLBACK_WORKFLOW, NodeName.OUTPUT_HANDLER)
     
     # Auth-protected workflows

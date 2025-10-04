@@ -2,8 +2,8 @@ import {
   LuBookmark,
   LuCircleX,
   LuEllipsis,
+  LuHeart,
   LuSquareArrowOutUpRight,
-  LuStar,
 } from "react-icons/lu";
 import AutoResizeInput from "../auto-resize-input";
 import { useChatStore } from "../../store/chat-store";
@@ -105,6 +105,8 @@ const ChatWindow = () => {
     sendMessage,
     widgetJson,
     currentStreamingMessageId,
+    currentConversation,
+    favoriteConversation,
   } = useChatStore();
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -167,6 +169,19 @@ const ChatWindow = () => {
   const handleMessageChange = (message: string) => {
     // Handle message change logic here (optional)
     console.log("Message changed:", message);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (currentConversation?.id) {
+      try {
+        await favoriteConversation(
+          currentConversation.id,
+          !currentConversation.is_favorite
+        );
+      } catch (error) {
+        console.error("Failed to toggle favorite:", error);
+      }
+    }
   };
 
   const getMappedTemplate = ({
@@ -234,10 +249,21 @@ const ChatWindow = () => {
     <div className="w-4/5 h-full flex bg-transparent">
       <div className="flex flex-col w-3/5 h-full bg-neutral-600/10 rounded-l-2xl border-r border-r-neutral-400/10">
         <div className="flex justify-between w-full px-8 border-b border-b-neutral-400/10 h-[68px]  items-center">
-          <h2 className="text-white text-2xl font-semibold">Convo with AI</h2>
+          <h2 className="text-white text-2xl font-semibold">
+            {currentConversation?.title || "New Chat"}
+          </h2>
           <div className="flex justify-center items-center gap-6">
-            <button className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group">
-              <LuStar className="text-neutral-600 size-[20px] group-hover:text-white transition-all duration-300" />
+            <button
+              onClick={handleToggleFavorite}
+              className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group"
+            >
+              <LuHeart
+                className={`size-[20px] transition-all duration-300 ${
+                  currentConversation?.is_favorite
+                    ? "text-red-500 fill-red-500"
+                    : "text-neutral-600 group-hover:text-red-500"
+                }`}
+              />
             </button>
             <button className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group">
               <LuBookmark className="text-neutral-600 size-[20px] group-hover:text-white transition-all duration-300" />

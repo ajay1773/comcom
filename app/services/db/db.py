@@ -30,7 +30,6 @@ class OrderItem(BaseModel):
     unit_price: float
     total_price: float
     size: str | None = None
-    color: str | None = None
     status: str = "pending"  # pending, confirmed, shipped, delivered, cancelled
     discount_amount: float = 0.0
     created_at: str | None = None
@@ -38,18 +37,30 @@ class OrderItem(BaseModel):
 
 class Product(BaseModel):
     id: int
-    name: str
+    title: str
+    description: str
     category: str
     price: float
-    gender: str
+    discount_percentage: float
+    rating: float
+    stock: int
+    tags: str  # JSON string containing tags array
     brand: str
-    material: str
-    style: str
-    pattern: str
-    color: str
-    images: str
+    sku: str
+    weight: float
+    dimensions: str  # JSON string containing width, height, depth
+    warranty_information: str
+    shipping_information: str
+    availability_status: str
+    return_policy: str
+    minimum_order_quantity: int
+    thumbnail: str
+    images: str  # JSON string containing images array
+    barcode: str
+    qr_code: str
     available_sizes: str  # JSON string containing available sizes
     unit: str  # Unit of measurement (e.g., "piece", "pair", "set")
+    gender: str | None = None
 
 class UserCart(BaseModel):
     id: int
@@ -232,18 +243,35 @@ class DatabaseService:
         create_products_table = """
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
             category TEXT NOT NULL,
             price REAL NOT NULL,
-            gender TEXT NOT NULL,
+            discount_percentage REAL DEFAULT 0.0,
+            rating REAL DEFAULT 0.0,
+            stock INTEGER DEFAULT 0,
+            tags TEXT NOT NULL DEFAULT '[]',
             brand TEXT NOT NULL,
-            material TEXT NOT NULL,
-            style TEXT NOT NULL,
-            pattern TEXT NOT NULL,
-            color TEXT NOT NULL,
-            images TEXT NOT NULL,
+            sku TEXT NOT NULL,
+            weight REAL DEFAULT 0.0,
+            dimensions TEXT NOT NULL DEFAULT '{}',
+            warranty_information TEXT DEFAULT '',
+            shipping_information TEXT DEFAULT '',
+            availability_status TEXT DEFAULT 'In Stock',
+            return_policy TEXT DEFAULT '',
+            minimum_order_quantity INTEGER DEFAULT 1,
+            thumbnail TEXT NOT NULL,
+            images TEXT NOT NULL DEFAULT '[]',
+            barcode TEXT DEFAULT '',
+            qr_code TEXT DEFAULT '',
             available_sizes TEXT NOT NULL DEFAULT '[]',
-            unit TEXT NOT NULL DEFAULT 'piece'
+            unit TEXT NOT NULL DEFAULT 'piece',
+            -- Legacy fields for backward compatibility
+            gender TEXT,
+            material TEXT,
+            style TEXT,
+            pattern TEXT,
+            color TEXT
         )
         """
 

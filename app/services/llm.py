@@ -39,21 +39,34 @@ class LLMService:
             return "New Chat"
         
         # Take the first few messages to understand the conversation topic
-        context = "\n".join(conversation_history[:6])  # First 6 messages
+        # Include more messages for better context, but limit to avoid token limits
+        context = "\n".join(conversation_history[:8])  # First 8 messages for better context
         
-        prompt = f"""Based on the following conversation, generate a short, descriptive title (maximum 4-5 words) that captures the main topic or purpose of the conversation. The title should be clear and concise.
+        prompt = f"""You are an AI assistant that creates concise, descriptive titles for conversations. Based on the conversation below, generate a short title (2-5 words) that captures the main topic, intent, or purpose.
+
+Even if the conversation is very short (just 1-2 messages), focus on the user's intent or what they're asking about.
 
 Conversation:
 {context}
 
-Generate only the title, nothing else. Examples of good titles:
-- "Product Search Help"
-- "Order Status Inquiry" 
-- "Account Setup"
-- "Payment Issue"
-- "Shopping Cart"
+Guidelines:
+- Focus on the user's main intent or the primary topic discussed
+- Use specific terms when possible (e.g., "iPhone Search" instead of "Product Search")
+- For short conversations, extract the key topic from the user's first message
+- Avoid generic words like "help", "chat", "conversation" unless necessary
+- Make it actionable or descriptive of the content
+- Keep it under 50 characters
 
-Title:"""
+Examples of good titles:
+- "iPhone 15 Search" (from "I'm looking for iPhone 15")
+- "Order Status Check" (from "What's my order status?")
+- "Password Reset" (from "I forgot my password")
+- "Shipping Address Update" (from "Need to change my address")
+- "Product Recommendations" (from "Can you recommend products?")
+- "Account Billing Issue" (from "Problem with my bill")
+- "Return Policy Question" (from "What's your return policy?")
+
+Generate only the title, no quotes or extra text:"""
 
         try:
             llm = self.get_llm(disable_streaming=True)
@@ -68,9 +81,15 @@ Title:"""
             if title.startswith("'") and title.endswith("'"):
                 title = title[1:-1]
             
+            # Remove any trailing punctuation
+            title = title.rstrip('.,!?:;')
+            
             # Ensure title is not too long
             if len(title) > 50:
                 title = title[:47] + "..."
+            
+            # Capitalize first letter of each word for consistency
+            title = title.title()
             
             return title if title else "New Chat"
             

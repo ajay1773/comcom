@@ -487,17 +487,26 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           role: "user" | "assistant";
           content: string;
           timestamp?: string;
+          widget_json?: { template: string; payload: unknown };
         }) => ({
           id: generateMessageId(),
           role: msg.role,
           content: msg.content,
           timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+          widget_json: msg.widget_json,
         })
       );
 
       store.setThreadId(threadId);
       store.resetChat();
       messages.forEach(store.addMessage);
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.widget_json) {
+        store.setWidgetJson({
+          template: lastMessage.widget_json.widget_type,
+          payload: lastMessage.widget_json.payload,
+        });
+      }
 
       console.log(
         `📚 Loaded ${messages.length} messages from thread ${threadId}`

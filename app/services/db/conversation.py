@@ -150,22 +150,34 @@ class ConversationService:
         
         await db_service.execute_query(query, (now, now, thread_id))
         
-        # Auto-generate title after 3 messages if title is still default
+        # Auto-generate title immediately if title is still default
         conversation = await self.get_conversation_by_thread_id(thread_id)
         if (conversation and 
-            conversation.message_count >= 3 and 
             (not conversation.title or conversation.title in ["New Chat", f"Chat {datetime.now().strftime('%m/%d %H:%M')}"])):
             
             try:
                 # Import here to avoid circular imports
                 from app.services.llm import llm_service
+                from app.services.langgraph_history import langgraph_history_service
                 
-                # For now, use a simple title generation
-                # In a full implementation, you'd get the actual conversation history
-                sample_history = ["User: Hello", "Assistant: Hi there!", "User: I need help"]
-                new_title = await llm_service.generate_conversation_title(sample_history)
-                await self.update_conversation_title(thread_id, new_title)
-                print(f"🏷️ Auto-generated title for conversation {thread_id}: {new_title}")
+                # Get actual conversation history from LangGraph
+                messages = await langgraph_history_service.get_conversation_history(thread_id)
+                
+                # Convert messages to simple string format for title generation
+                conversation_history = []
+                for msg in messages:
+                    role = msg.get('role', 'unknown')
+                    content = msg.get('content', '')
+                    if content.strip():  # Only include non-empty messages
+                        conversation_history.append(f"{role.title()}: {content}")
+                
+                # Only generate title if we have actual conversation content
+                if conversation_history:
+                    new_title = await llm_service.generate_conversation_title(conversation_history)
+                    await self.update_conversation_title(thread_id, new_title)
+                    print(f"🏷️ Auto-generated title for conversation {thread_id}: {new_title}")
+                else:
+                    print(f"⚠️ No conversation history found yet for {thread_id}, skipping title generation")
             except Exception as e:
                 print(f"⚠️ Failed to auto-generate title for {thread_id}: {e}")
 
@@ -181,6 +193,38 @@ class ConversationService:
         
         await db_service.execute_query(query, (title, now, thread_id))
         return True
+
+    async def regenerate_conversation_title(self, thread_id: str) -> str:
+        """Manually regenerate conversation title using current conversation history."""
+        try:
+            # Import here to avoid circular imports
+            from app.services.llm import llm_service
+            from app.services.langgraph_history import langgraph_history_service
+            
+            # Get actual conversation history from LangGraph
+            messages = await langgraph_history_service.get_conversation_history(thread_id)
+            
+            # Convert messages to simple string format for title generation
+            conversation_history = []
+            for msg in messages:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                if content.strip():  # Only include non-empty messages
+                    conversation_history.append(f"{role.title()}: {content}")
+            
+            # Generate new title
+            if conversation_history:
+                new_title = await llm_service.generate_conversation_title(conversation_history)
+                await self.update_conversation_title(thread_id, new_title)
+                print(f"🔄 Regenerated title for conversation {thread_id}: {new_title}")
+                return new_title
+            else:
+                print(f"⚠️ No conversation history found for {thread_id}")
+                return "New Chat"
+                
+        except Exception as e:
+            print(f"⚠️ Failed to regenerate title for {thread_id}: {e}")
+            return "New Chat"
 
     async def archive_conversation(self, thread_id: str, archived: bool = True) -> bool:
         """Archive or unarchive a conversation."""

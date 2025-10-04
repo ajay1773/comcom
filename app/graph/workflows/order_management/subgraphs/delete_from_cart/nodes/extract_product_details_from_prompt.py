@@ -7,7 +7,8 @@ from app.services.chat_history_state import get_conversation_context_for_workflo
 
 class ToBeDeletedProductDetails(BaseModel):
     """Product details extracted from user prompt."""
-    name: str
+    name: str  # Main field for extraction
+    title: str | None = None
     brand: str | None = None
     size: str | None = None
 
@@ -41,6 +42,7 @@ async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -
         TASK:
         Extract these EXACT fields:
         - name: The complete product name as mentioned (e.g., "Summer Breeze T-shirt", "Aliceblue Sweater")
+        - title: Product title/name
         - brand: The brand name as mentioned (e.g., "Nike", "Mclaughlin-Castillo") - null if not mentioned
         - size: The size if mentioned (e.g., "M", "Large", "10", "XL") - null if not mentioned
 
@@ -48,29 +50,33 @@ async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -
         Input: "I'd like to delete the Summer Breeze T-shirt by Nike in size M"
         Output: {{
             "name": "Summer Breeze T-shirt",
+            "title": "Summer Breeze T-shirt",
             "brand": "Nike",
-            "size": "M",
+            "size": "M"
         }}
 
         Input: "I want to delete 2 Aliceblue Sweaters by Mclaughlin-Castillo in Large"
         Output: {{
             "name": "Aliceblue Sweater",
+            "title": "Aliceblue Sweater",
             "brand": "Mclaughlin-Castillo",
-            "size": "Large",
+            "size": "Large"
         }}
 
         Input: "Delete the Red Dress by Fashion Co from my cart" - note that brand is null if not mentioned
         Output: {{
             "name": "Red Dress",
+            "title": "Red Dress",
             "brand": null,
-            "size": null,
+            "size": null
         }}
 
         Input: "I want you to delete Mediumpurple Jacket from my cart" - note that brand is null if not mentioned
         Output: {{
             "name": "Mediumpurple Jacket",
+            "title": "Mediumpurple Jacket",
             "brand": null,
-            "size": null,
+            "size": null
         }}
 
         RULES:
@@ -78,8 +84,10 @@ async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -
         2. Include the full product name with color if mentioned
         3. Keep brand names exactly as written - null if not mentioned
         4. Extract size only if explicitly mentioned (L, XL, 10, Small, etc.)
-        5. Do not add or remove any words from the names
-        7. If conversation context is available, consider user's previous preferences when extracting details
+        5. Extract color from product names or separate mentions (Red, Blue, etc.)
+        6. Extract the product title/name
+        7. Do not add or remove any words from the names
+        8. If conversation context is available, consider user's previous preferences when extracting details
         """ + context_section),
         ("user", "{query}")
     ])
@@ -90,5 +98,11 @@ async def extract_product_details_from_prompt_node(state: DeleteFromCartState) -
 
     # Update workflow state with extracted parameters
     response = cast(ToBeDeletedProductDetails, response)
-    state["product_details"] = response.model_dump()
+    product_details = response.model_dump()
+    
+    
+    # Also set product_name field for consistency with other nodes
+    product_details["product_name"] = product_details["name"]
+    
+    state["product_details"] = product_details
     return state

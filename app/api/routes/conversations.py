@@ -364,11 +364,73 @@ async def delete_conversation_by_id(
         )
 
 
+@router.post("/conversations/id/{conversation_id}/regenerate-title", response_model=ConversationResponse)
+async def regenerate_conversation_title(
+    conversation_id: int,
+    current_user = Depends(auth_service.get_current_user_optional)
+):
+    """
+    Regenerate conversation title using LLM based on current conversation history.
+    
+    This endpoint analyzes the conversation history and generates a new, more
+    descriptive title using AI. Only the conversation owner can regenerate titles.
+    
+    Path Parameters:
+        conversation_id: Unique identifier of the conversation to update
+    
+    Returns:
+        ConversationResponse: Updated conversation data with new title
+        
+    Raises:
+        403: Access denied - user doesn't own this conversation
+        404: Conversation not found
+        500: Internal server error
+    """
+    try:
+        conversation = await conversation_service.get_conversation_by_id(conversation_id)
+        
+        if not conversation:
+            raise HTTPException(
+                status_code=404, 
+                detail="Conversation not found"
+            )
+        
+        # Access control: only conversation owner can regenerate title
+        if (current_user and conversation.user_id and 
+            conversation.user_id != current_user.id):
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied - you don't have permission to update this conversation"
+            )
+        
+        # Regenerate title using conversation history
+        new_title = await conversation_service.regenerate_conversation_title(conversation.thread_id)
+        
+        # Return updated conversation
+        updated_conversation = await conversation_service.get_conversation_by_id(conversation_id)
+        
+        if not updated_conversation:
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to retrieve updated conversation"
+            )
+        
+        return conversation_to_response(updated_conversation)
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to regenerate conversation title: {str(e)}"
+        )
+
+
 # ============================================================================
 # API ENDPOINTS SUMMARY
 # ============================================================================
 #
-# This module provides 4 essential REST endpoints for conversation management:
+# This module provides 5 essential REST endpoints for conversation management:
 #
 # 1. GET /conversations
 #    - Lists all conversations for the authenticated user
@@ -390,6 +452,11 @@ async def delete_conversation_by_id(
 #    - Permanently deletes a conversation and all associated data
 #    - Access control: only conversation owner can delete
 #    - Cannot be undone
+#
+# 5. POST /conversations/id/{conversation_id}/regenerate-title
+#    - Regenerates conversation title using LLM based on conversation history
+#    - Access control: only conversation owner can regenerate title
+#    - Uses actual message history from LangGraph for intelligent title generation
 #
 # All endpoints:
 # - Support both authenticated and anonymous users with proper access control

@@ -21,7 +21,7 @@ async def add_product_to_cart_node(state: AddToCartState) -> AddToCartState:
         cart_item = CartItemCreate(
             product_id=product_details.get("id", 0),
             quantity=quantity,
-            unit_price=product_details.get("max_price", 10),
+            unit_price=product_details.get("price", 10),
             size=state.get("size", None),
             color=state.get("color", None),
             unit=product_details.get("unit", "piece")

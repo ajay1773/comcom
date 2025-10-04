@@ -236,7 +236,6 @@ const UserProfile = ({ data }: Props) => {
                                 );
                                 const itemBrand = get(item, "brand", "");
                                 const itemSize = get(item, "size", "");
-                                const itemColor = get(item, "color", "");
                                 const itemQuantity = get(item, "quantity", 1);
                                 const itemUnitPrice = get(
                                   item,

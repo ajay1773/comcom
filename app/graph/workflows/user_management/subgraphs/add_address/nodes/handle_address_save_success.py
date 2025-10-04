@@ -62,6 +62,8 @@ async def handle_address_save_success_node(state: AddAddressState) -> AddAddress
             }
         )
 
+        state["workflow_output_text"] = success_message
+
     except Exception as e:
         print(f"Error generating success message: {e}")
         # Fallback success message

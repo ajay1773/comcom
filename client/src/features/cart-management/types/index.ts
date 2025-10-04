@@ -17,22 +17,44 @@ export type CartItem = {
 export type CartItemWithProductDetails = CartItem & {
   product_details: {
     id: number;
-    name: string;
+    title?: string; // New DummyJSON field
+    description?: string;
     category: string;
     price: number;
-    gender: string;
+    discount_percentage?: number;
+    rating?: number;
+    stock?: number;
+    tags?: string[];
     brand: string;
-    material: string;
-    style: string;
-    pattern: string;
-    color: string;
-    images: {
-      thumbnail: string;
-      preview: string;
-      full: string;
+    sku?: string;
+    weight?: number;
+    dimensions?: {
+      width: number;
+      height: number;
+      depth: number;
     };
+    warranty_information?: string;
+    shipping_information?: string;
+    availability_status?: string;
+    return_policy?: string;
+    minimum_order_quantity?: number;
+    thumbnail?: string;
+    images?:
+      | string[]
+      | {
+          thumbnail: string;
+          preview: string;
+          full: string;
+        };
+    barcode?: string;
+    qr_code?: string;
     available_sizes: string[];
     unit: string;
+    gender?: string;
+    material?: string;
+    style?: string;
+    pattern?: string;
+    color?: string;
   };
 };
 

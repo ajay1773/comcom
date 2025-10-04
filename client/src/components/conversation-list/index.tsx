@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import {
   LuMessageSquare,
@@ -223,19 +224,17 @@ interface ConversationListProps {
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({ className }) => {
+  const navigate = useNavigate();
   const {
     conversations,
     conversationsLoading,
     currentConversation,
     loadConversations,
-    switchConversationById,
     updateConversationTitle,
     archiveConversation,
     favoriteConversation,
     deleteConversation,
   } = useChatStore();
-
-  const [filter, setFilter] = useState<"all" | "favorites" | "archived">("all");
 
   useEffect(() => {
     // Load conversations when component mounts
@@ -243,18 +242,13 @@ const ConversationList: React.FC<ConversationListProps> = ({ className }) => {
   }, [loadConversations]);
 
   const filteredConversations = conversations.filter((conv) => {
-    switch (filter) {
-      case "favorites":
-        return conv.is_favorite && !conv.is_archived;
-      case "archived":
-        return conv.is_archived;
-      default:
-        return !conv.is_archived;
-    }
+    // Show all non-archived conversations by default
+    return !conv.is_archived;
   });
 
   const handleConversationSelect = async (conversationId: number) => {
-    await switchConversationById(conversationId);
+    // Use React Router navigation instead of direct store call
+    navigate(`/chat/${conversationId}`);
   };
 
   if (conversationsLoading) {
@@ -267,54 +261,11 @@ const ConversationList: React.FC<ConversationListProps> = ({ className }) => {
 
   return (
     <div className={clsx("flex flex-col h-full", className)}>
-      {/* Filter tabs */}
-      <div className="flex border-b border-neutral-700 mb-4">
-        <button
-          onClick={() => setFilter("all")}
-          className={clsx(
-            "flex-1 py-2 px-3 text-sm font-medium transition-colors",
-            {
-              "text-blue-400 border-b-2 border-blue-400": filter === "all",
-              "text-neutral-400 hover:text-white": filter !== "all",
-            }
-          )}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter("favorites")}
-          className={clsx(
-            "flex-1 py-2 px-3 text-sm font-medium transition-colors",
-            {
-              "text-blue-400 border-b-2 border-blue-400":
-                filter === "favorites",
-              "text-neutral-400 hover:text-white": filter !== "favorites",
-            }
-          )}
-        >
-          Favorites
-        </button>
-        <button
-          onClick={() => setFilter("archived")}
-          className={clsx(
-            "flex-1 py-2 px-3 text-sm font-medium transition-colors",
-            {
-              "text-blue-400 border-b-2 border-blue-400": filter === "archived",
-              "text-neutral-400 hover:text-white": filter !== "archived",
-            }
-          )}
-        >
-          Archived
-        </button>
-      </div>
-
       {/* Conversations list */}
       <div className="flex-1 overflow-y-auto space-y-2">
         {filteredConversations.length === 0 ? (
           <div className="text-center text-neutral-400 text-sm py-8">
-            {filter === "all" && "No conversations yet"}
-            {filter === "favorites" && "No favorite conversations"}
-            {filter === "archived" && "No archived conversations"}
+            No conversations yet
           </div>
         ) : (
           filteredConversations.map((conversation) => (

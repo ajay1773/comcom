@@ -1,164 +1,140 @@
 from faker import Faker
-from typing import Tuple
+from typing import Tuple, List
 from app.services.db.db import db_service
 import json
+import aiohttp
 
-# Initialize Faker with consistent seed for reproducible data
 fake = Faker()
 Faker.seed(12345)
 
-def generate_product() -> Tuple:
-    """Generate a single product record using Faker."""
+async def fetch_dummyjson_products() -> List[dict]:
+    """Fetch products from DummyJSON API"""
+    async with aiohttp.ClientSession() as session:
+        async with session.get('https://dummyjson.com/products?limit=193') as response:
+            data = await response.json()
+            return data['products']
 
-    # Use Faker's providers to generate realistic data
-    category = fake.random_element(elements=('clothing', 'shoes', 'accessories', 'bags', 'jewelry'))
+def convert_dummyjson_to_tuple(product: dict) -> Tuple:
+    """Convert DummyJSON product to database tuple"""
     
-    # Generate sizes and unit based on category
-    if category == 'clothing':
-        available_sizes = json.dumps(['XS', 'S', 'M', 'L', 'XL', 'XXL'])
+    # Use original category from DummyJSON
+    category = product['category']
+    
+    # Sizes logic based on category
+    category_lower = category.lower() if category else ''
+    if any(term in category_lower for term in ['clothing', 'tops', 'dresses', 'shirts']):
+        available_sizes = json.dumps(['XS', 'S', 'M', 'L', 'XL'])
         unit = 'piece'
-    elif category == 'shoes':
-        available_sizes = json.dumps(['6', '7', '8', '9', '10', '11', '12'])
+    elif 'shoes' in category_lower:
+        available_sizes = json.dumps(['6', '7', '8', '9', '10', '11'])
         unit = 'pair'
-    elif category == 'accessories':
-        if fake.random_element(['watch', 'belt', 'scarf', 'hat']) in ['watch', 'belt']:
-            available_sizes = json.dumps(['S', 'M', 'L'])
-        else:
-            available_sizes = json.dumps(['One Size'])
-        unit = 'piece'
-    elif category == 'bags':
+    elif 'bags' in category_lower:
         available_sizes = json.dumps(['Small', 'Medium', 'Large'])
         unit = 'piece'
-    else:  # jewelry
-        available_sizes = json.dumps(['One Size', 'Adjustable'])
+    elif 'jewellery' in category_lower or 'jewelry' in category_lower:
+        available_sizes = json.dumps(['One Size'])
         unit = 'piece'
-
-    # Generate product name based on category
-    if category == 'clothing':
-        product_name = fake.random_element(elements=(
-            'T-Shirt', 'Shirt', 'Jeans', 'Dress', 'Sweater', 'Jacket', 'Hoodie',
-            f"{fake.word()} Collection {fake.word().title()} Shirt",
-            f"{fake.word().title()} Series {fake.word().title()} Pants",
-            f"{fake.word().title()} {fake.word().title()} Dress"
-        ))
-    elif category == 'shoes':
-        product_name = fake.random_element(elements=(
-            f"{fake.word().title()} {fake.random_element(['Sneakers', 'Boots', 'Loafers', 'Running Shoes'])}",
-            f"{fake.word().title()} Collection {fake.word().title()} Shoes"
-        ))
-    elif category == 'accessories':
-        product_name = fake.random_element(elements=(
-            f"{fake.word().title()} {fake.random_element(['Watch', 'Belt', 'Scarf', 'Hat', 'Sunglasses'])}",
-            f"{fake.word().title()} Series {fake.word().title()} Accessory"
-        ))
-    elif category == 'bags':
-        product_name = fake.random_element(elements=(
-            f"{fake.word().title()} {fake.random_element(['Backpack', 'Tote', 'Messenger Bag', 'Handbag'])}",
-            f"{fake.word().title()} Collection {fake.word().title()} Bag"
-        ))
-    else:  # jewelry
-        product_name = fake.random_element(elements=(
-            f"{fake.word().title()} {fake.random_element(['Necklace', 'Ring', 'Bracelet', 'Earrings'])}",
-            f"{fake.word().title()} Collection {fake.word().title()} Jewelry"
-        ))
-
-    # Generate price based on category
-    price_ranges = {
-        'clothing': (20, 200),
-        'shoes': (40, 300),
-        'accessories': (15, 150),
-        'bags': (30, 400),
-        'jewelry': (50, 1000)
-    }
-    price = round(fake.pyfloat(min_value=price_ranges[category][0],
-                              max_value=price_ranges[category][1],
-                              right_digits=2), 2)
-
-    # Generate other attributes using Faker
-    gender = fake.random_element(elements=('M', 'F', 'U'))
-    brand = fake.company()  # Use real-looking company names
-    material = fake.random_element(elements=(
-        'Cotton', 'Leather', 'Denim', 'Silk', 'Wool', 'Polyester', 'Linen',
-        fake.word().title()  # Sometimes generate unique materials
-    ))
-    style = fake.random_element(elements=(
-        'Casual', 'Formal', 'Sporty', 'Vintage', 'Modern', 'Classic',
-        f"{fake.word().title()} Style"  # Generate unique styles
-    ))
-    pattern = fake.random_element(elements=(
-        'Solid', 'Striped', 'Plaid', 'Floral', 'Polka Dot',
-        f"{fake.word().title()} Pattern"  # Generate unique patterns
-    ))
-    color = fake.color_name()  # Use Faker's color names
-
-    # Create product name with color for better searchability
-    full_name = f"{color.title()} {product_name}"
-
-    # Generate image URLs using picsum
-    # Using different sizes for different views
-    image_id = fake.random_int(min=1, max=1000)  # Picsum has images from 1 to 1000
-    images = {
-        "thumbnail": f"https://picsum.photos/id/{image_id}/200/200",  # Small thumbnail
-        "preview": f"https://picsum.photos/id/{image_id}/400/400",    # Medium preview
-        "full": f"https://picsum.photos/id/{image_id}/800/800"        # Full size
-    }
-    images_json = json.dumps(images)
-
+    else:
+        available_sizes = json.dumps(['One Size'])
+        unit = 'piece'
+    
+    # Gender detection from category
+    gender = 'U'  # Unisex by default
+    if 'women' in category_lower:
+        gender = 'F'
+    elif 'men' in category_lower:
+        gender = 'M'
+    
     return (
-        full_name,
-        category,
-        price,
-        gender,
-        brand,
-        material,
-        style,
-        pattern,
-        color,
-        images_json,  # Add images as JSON string
-        available_sizes,  # Add available sizes as JSON string
-        unit  # Add unit
+        product['title'],  # title
+        product['description'],  # description
+        category,  # category
+        product['price'],  # price
+        product.get('discountPercentage', 0.0),  # discount_percentage
+        product.get('rating', 0.0),  # rating
+        product.get('stock', 0),  # stock
+        json.dumps(product.get('tags', [])),  # tags
+        product.get('brand', fake.company()),  # brand
+        product.get('sku', f"SKU-{fake.random_int(100000, 999999)}"),  # sku
+        product.get('weight', 0.0),  # weight
+        json.dumps(product.get('dimensions', {})),  # dimensions
+        product.get('warrantyInformation', ''),  # warranty_information
+        product.get('shippingInformation', ''),  # shipping_information
+        product.get('availabilityStatus', 'In Stock'),  # availability_status
+        product.get('returnPolicy', ''),  # return_policy
+        product.get('minimumOrderQuantity', 1),  # minimum_order_quantity
+        product.get('thumbnail', ''),  # thumbnail
+        json.dumps(product.get('images', [])),  # images
+        product.get('meta', {}).get('barcode', ''),  # barcode
+        product.get('meta', {}).get('qrCode', ''),  # qr_code
+        available_sizes,  # available_sizes
+        unit,  # unit
+        gender  # gender
     )
+
 
 async def seed_database(num_products: int = 100) -> None:
     """
-    Seed the database with generated products.
-    Only seeds if the database is empty.
+    Seed database with products from DummyJSON API only
     """
-    # Check if database is already seeded
+    # Check if already seeded
     existing_products = await db_service.execute_query("SELECT COUNT(*) FROM products")
     if existing_products and existing_products[0][0] > 0:
         print("Database already seeded, skipping...")
         return
 
-    # Generate products
-    products = [generate_product() for _ in range(num_products)]
-
-    # Create products table with all necessary columns
+    # Create table with updated schema (with gender field)
     await db_service.execute_query("""
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            category TEXT,
-            price REAL,
-            gender TEXT,
-            brand TEXT,
-            material TEXT,
-            style TEXT,
-            pattern TEXT,
-            color TEXT,
-            images TEXT,  -- JSON string containing image URLs
-            available_sizes TEXT NOT NULL DEFAULT '[]',  -- JSON string containing available sizes
-            unit TEXT NOT NULL DEFAULT 'piece'  -- Unit of measurement
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            category TEXT NOT NULL,
+            price REAL NOT NULL,
+            discount_percentage REAL DEFAULT 0.0,
+            rating REAL DEFAULT 0.0,
+            stock INTEGER DEFAULT 0,
+            tags TEXT NOT NULL DEFAULT '[]',
+            brand TEXT NOT NULL,
+            sku TEXT NOT NULL,
+            weight REAL DEFAULT 0.0,
+            dimensions TEXT NOT NULL DEFAULT '{}',
+            warranty_information TEXT DEFAULT '',
+            shipping_information TEXT DEFAULT '',
+            availability_status TEXT DEFAULT 'In Stock',
+            return_policy TEXT DEFAULT '',
+            minimum_order_quantity INTEGER DEFAULT 1,
+            thumbnail TEXT NOT NULL,
+            images TEXT NOT NULL DEFAULT '[]',
+            barcode TEXT DEFAULT '',
+            qr_code TEXT DEFAULT '',
+            available_sizes TEXT NOT NULL DEFAULT '[]',
+            unit TEXT NOT NULL DEFAULT 'piece',
+            gender TEXT
         )
     """)
 
+    products = []
+    
+    try:
+        # Get all products from DummyJSON API
+        api_products = await fetch_dummyjson_products()
+        products.extend([
+            convert_dummyjson_to_tuple(p) 
+            for p in api_products
+        ])
+        print(f"Fetched {len(products)} products from DummyJSON")
+    except Exception as e:
+        print(f"Failed to fetch from API: {e}")
+        return
+    
     # Insert products
     await db_service.execute_query(
         """
-        INSERT INTO products (name, category, price, gender, brand, material, style, pattern, color, images, available_sizes, unit)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (title, description, category, price, discount_percentage, rating, stock, tags, brand, sku, weight, dimensions, warranty_information, shipping_information, availability_status, return_policy, minimum_order_quantity, thumbnail, images, barcode, qr_code, available_sizes, unit, gender)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         products
     )
 
-    print(f"Seeded database with {num_products} products")
+    print(f"Seeded database with {len(products)} products from DummyJSON")

@@ -211,6 +211,13 @@ async def classifier_node(state: GlobalState) -> GlobalState:
           * "Find blue shirts"
           * "Do you have any Nike shoes?"
           * "Search for winter jackets"
+          * "Show me electronics"
+          * "Find beauty products"
+          * "Do you have any laptops?"
+          * "Search for smartphones"
+          * "Show me home decor items"
+          * "Find automotive products"
+          * "Do you have sports equipment?"
 
         - place_order: For purchasing/ordering SPECIFIC products. Use when:
           * User explicitly mentions ordering/buying a specific product

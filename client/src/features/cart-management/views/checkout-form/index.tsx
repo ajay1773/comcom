@@ -264,48 +264,81 @@ Credit Card Details:
               {get(data, "product_items", []).map((item) => {
                 const productId = get(item, "product_id", "");
                 const size = get(item, "size", "");
-                const color = get(item, "color", "");
                 const productDetails = get(item, "product_details", {});
-                const images = JSON.parse(
-                  get(productDetails, "images", "{}") as string
-                );
-                const thumbnailSrc = get(images, "thumbnail", "");
-                const productName = get(productDetails, "name", "");
+
+                // Handle both old and new image structure
+                let thumbnailSrc = "";
+                const imagesData = get(productDetails, "images", "");
+
+                if (typeof imagesData === "string" && imagesData) {
+                  try {
+                    const parsedImages = JSON.parse(imagesData);
+                    // Check if it's an array (new structure) or object (old structure)
+                    if (Array.isArray(parsedImages)) {
+                      thumbnailSrc = parsedImages[0] || "";
+                    } else {
+                      thumbnailSrc = parsedImages.thumbnail || "";
+                    }
+                  } catch {
+                    thumbnailSrc = "";
+                  }
+                }
+
+                // Fallback to thumbnail field
+                if (!thumbnailSrc) {
+                  thumbnailSrc = get(productDetails, "thumbnail", "");
+                }
+
+                const productName =
+                  get(productDetails, "title", "") ||
+                  get(productDetails, "name", "");
                 const brandName = get(productDetails, "brand", "");
                 const totalPrice = get(item, "total_price", 0);
                 const quantity = get(item, "quantity", 0);
+                const unitPrice =
+                  get(productDetails, "price", 0) || get(item, "unit_price", 0);
 
                 return (
                   <div
-                    key={`${productId}-${size}-${color}`}
+                    key={`${productId}-${size}`}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1">
                       <img
                         src={thumbnailSrc}
                         alt={productName}
-                        className="w-16 h-16 object-cover rounded-lg"
+                        className="w-20 h-20 object-cover rounded-lg"
                       />
-                      <div className="flex flex-col justify-between">
-                        <h4 className="font-medium">{productName}</h4>
-                        <p className="text-sm text-gray-600">{brandName}</p>
-                        <div className="flex gap-2">
+                      <div className="flex flex-col gap-2 flex-1">
+                        <div>
+                          <h4 className="font-semibold text-lg">
+                            {productName}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {brandName}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 flex-wrap">
                           {!isEmpty(size) && (
                             <Badge variant="secondary" className="text-xs">
                               Size: {size}
                             </Badge>
                           )}
-                          {!isEmpty(color) && (
-                            <Badge variant="secondary" className="text-xs">
-                              Color: {color}
-                            </Badge>
-                          )}
+                          <Badge variant="outline" className="text-xs">
+                            ${unitPrice.toFixed(2)} each
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col justify-between">
-                      <p className="font-medium">${totalPrice.toFixed(2)}</p>
-                      <p className="text-sm text-gray-600">Qty: {quantity}</p>
+
+                    <div className="flex flex-col items-end gap-1">
+                      <p className="text-sm text-muted-foreground">
+                        Qty: {quantity}
+                      </p>
+                      <p className="text-xl font-bold">
+                        ${totalPrice.toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 );

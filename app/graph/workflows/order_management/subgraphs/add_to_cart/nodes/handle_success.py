@@ -55,7 +55,7 @@ async def handle_success_node(state: AddToCartState) -> AddToCartState:
     try:
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
         response = await llm.ainvoke(success_prompt.invoke({
-            "product_name": product_details.get("name", "the item"),
+            "product_name": product_details.get("title", "the item"),
             "brand": product_details.get("brand", ""),
             "quantity": quantity,
             "user_query": user_query,
@@ -66,7 +66,7 @@ async def handle_success_node(state: AddToCartState) -> AddToCartState:
         
     except Exception:
         # Fallback success message if LLM fails
-        product_name = product_details.get("name", "the item")
+        product_name = product_details.get("title", "the item")
         brand = product_details.get("brand", "")
         if brand:
             success_message = f"Great! I've added {quantity} {product_name} by {brand} to your cart. You now have {len(cart_details)} items in your cart."

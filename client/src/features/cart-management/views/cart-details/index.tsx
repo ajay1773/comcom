@@ -25,7 +25,10 @@ const CartDetails: FC<CartDetailsProps> = ({ details }) => {
   const { sendMessage } = useChatStore();
 
   const handleDeleteFromCart = async (item: CartItemWithProductDetails) => {
-    const message = `I would like to delete the item ${item.product_details.name} by ${item.product_details.brand} from my cart`;
+    const productDetails =
+      item.product_details as CartItemWithProductDetails["product_details"];
+    const productName = productDetails.title || "Unknown Product";
+    const message = `I would like to delete the item ${productName} by ${item.product_details.brand} from my cart`;
     await sendMessage(message);
   };
 
@@ -64,37 +67,77 @@ const CartDetails: FC<CartDetailsProps> = ({ details }) => {
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-4">
                 {cartDetails.map((item) => {
-                  const images = JSON.parse(
-                    get(item, "product_details.images", "{}") as string
-                  );
+                  // Handle both old and new image structure
+                  let thumbnailSrc = "";
+                  const imagesData = get(item, "product_details.images", "");
+
+                  if (typeof imagesData === "string" && imagesData) {
+                    try {
+                      const parsedImages = JSON.parse(imagesData);
+                      // Check if it's an array (new structure) or object (old structure)
+                      if (Array.isArray(parsedImages)) {
+                        thumbnailSrc = parsedImages[0] || "";
+                      } else {
+                        thumbnailSrc = parsedImages.thumbnail || "";
+                      }
+                    } catch {
+                      thumbnailSrc = "";
+                    }
+                  }
+
+                  // Fallback to thumbnail field
+                  if (!thumbnailSrc) {
+                    thumbnailSrc = get(item, "product_details.thumbnail", "");
+                  }
+
+                  const productName =
+                    get(item, "product_details.title", "") ||
+                    get(item, "product_details.name", "");
+                  const productPrice =
+                    get(item, "product_details.price", "") ||
+                    get(item, "unit_price", "");
+
                   return (
                     <div
                       key={get(item, "id", "")}
-                      className="flex justify-between"
+                      className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex gap-2 items-center">
+                      <div className="flex gap-3 items-center flex-1">
                         <img
-                          src={get(images, "thumbnail", "")}
-                          alt={get(item, "product_details.name", "")}
-                          className="w-12 h-12 rounded-lg"
+                          src={thumbnailSrc}
+                          alt={productName}
+                          className="w-16 h-16 rounded-lg object-cover"
                         />
-                        <div className="flex flex-col gap-1">
-                          <p className="text-lg font-semibold max-w-[240px] truncate">
-                            {get(item, "product_details.name", "")}
-                          </p>
-                          <p className="text-sm font-light">
-                            {get(item, "product_details.brand", "")}
-                          </p>
+                        <div className="flex flex-col gap-2 flex-1">
+                          <div>
+                            <p className="text-lg font-semibold line-clamp-2 leading-tight">
+                              {productName}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {get(item, "product_details.brand", "")}
+                            </p>
+                          </div>
+
+                          {/* Additional product details */}
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            {get(item, "size") && (
+                              <span className="bg-gray-100 px-2 py-1 rounded">
+                                Size: {get(item, "size")}
+                              </span>
+                            )}
+                            <span className="bg-gray-100 px-2 py-1 rounded">
+                              {get(item, "unit", "piece")}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <div className="flex gap-1 flex-col items-end">
-                          <p className="text-md font-medium">
-                            ${get(item, "product_details.price", "")} x{" "}
-                            {get(item, "quantity", "")}
+                          <p className="text-lg font-semibold">
+                            ${productPrice} × {get(item, "quantity", "")}
                           </p>
-                          <p className="text-sm font-light">
+                          <p className="text-xl font-bold text-green-600">
                             ${get(item, "total_price", "")}
                           </p>
                         </div>

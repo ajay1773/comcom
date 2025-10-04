@@ -128,7 +128,7 @@ const PaymentForm = ({ details }: PaymentFormProps) => {
             </div>
             <div className="flex flex-col gap-1 items-end">
               <p className="text-md font-medium">
-                ${Math.round(details?.selected_product?.min_price)}
+                ${Math.round(details?.selected_product?.price)}
               </p>
               <p className="text-sm font-light">Quantity: 1</p>
             </div>

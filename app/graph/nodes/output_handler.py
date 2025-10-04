@@ -25,12 +25,10 @@ async def output_handler_node(
 
     # Add the response to conversation history
     current_conversation_history = state.get("conversation_history", [])
-    latest_event = widget_event_emitter.get_latest_event()
     
     # Add the assistant's text response with widget JSON if available
-    widget_json = latest_event.payload if latest_event else None
     updated_conversation_history = chat_history_state.conversation_manager.add_assistant_message(
-        current_conversation_history, text_output, widget_json or {}
+        current_conversation_history, text_output
     )
     
     state["conversation_history"] = updated_conversation_history

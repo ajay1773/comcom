@@ -7,7 +7,8 @@ from app.services.chat_history_state import get_conversation_context_for_workflo
 
 class ProductDetails(BaseModel):
     """Product details extracted from user prompt."""
-    product_name: str
+    product_name: str  # Main field for extraction
+    title: str | None = None
     brand: str
     size: str | None = None
     quantity: int = 1
@@ -42,6 +43,7 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         TASK:
         Extract these EXACT fields:
         - product_name: The complete product name as mentioned (e.g., "Summer Breeze T-shirt", "Aliceblue Sweater")
+        - title: Product title/name
         - brand: The brand name as mentioned (e.g., "Nike", "Mclaughlin-Castillo")
         - size: The size if mentioned (e.g., "M", "Large", "10", "XL") - null if not mentioned
         - quantity: The quantity mentioned (default: 1)
@@ -50,6 +52,7 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         Input: "I'd like to buy the Summer Breeze T-shirt by Nike in size M"
         Output: {{
             "product_name": "Summer Breeze T-shirt",
+            "title": "Summer Breeze T-shirt",
             "brand": "Nike",
             "size": "M",
             "quantity": 1
@@ -58,6 +61,7 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         Input: "I want to order 2 Aliceblue Sweaters by Mclaughlin-Castillo in Large"
         Output: {{
             "product_name": "Aliceblue Sweater",
+            "title": "Aliceblue Sweater",
             "brand": "Mclaughlin-Castillo",
             "size": "Large",
             "quantity": 2
@@ -66,6 +70,7 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         Input: "Add the Red Dress by Fashion Co to my cart"
         Output: {{
             "product_name": "Red Dress",
+            "title": "Red Dress",
             "brand": "Fashion Co",
             "size": null,
             "quantity": 1
@@ -73,12 +78,13 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
 
         RULES:
         1. Extract EXACT names as they appear in the text
-        2. Include the full product name with color if mentioned
+        2. Include the full product name with color if mentioned in the name
         3. Keep brand names exactly as written
         4. Extract size only if explicitly mentioned (L, XL, 10, Small, etc.)
         5. Extract quantity from numbers like "2", "three", etc. (default: 1)
-        6. Do not add or remove any words from the names
-        7. If conversation context is available, consider user's previous preferences when extracting details
+        6. Extract the product title/name
+        7. Do not add or remove any words from the names
+        8. If conversation context is available, consider user's previous preferences when extracting details
         """ + context_section),
         ("user", "{query}")
     ])
@@ -89,6 +95,10 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
 
     # Update workflow state with extracted parameters
     response = cast(ProductDetails, response)
-    state["product_details"] = response.model_dump()
+    product_details = response.model_dump()
+    
+    
+    
+    state["product_details"] = product_details
     state["quantity"] = response.quantity
     return state

@@ -1,29 +1,39 @@
 export type ProductCategory =
-  | "accessories"
-  | "bags"
+  | "electronics"
   | "clothing"
-  | "jewelry"
-  | "shoes"
-  | "other";
+  | "beauty"
+  | "home"
+  | "sports"
+  | "automotive";
 
 export type Product = {
-  id?: number;
-  name: string;
-  gender: string;
+  id: number;
+  title: string;
+  description: string;
   category: ProductCategory;
-  min_price: number;
-  max_price: number;
-  color: string;
+  price: number;
+  discount_percentage: number;
+  rating: number;
+  stock: number;
+  tags: string[];
   brand: string;
-  material: string;
-  style: string;
-  pattern: string;
-  images: ProductImage;
-  available_sizes: string[];
-  unit: string;
-};
-export type ProductImage = {
+  sku: string;
+  weight: number;
+  dimensions: {
+    width: number;
+    height: number;
+    depth: number;
+  };
+  warranty_information: string;
+  shipping_information: string;
+  availability_status: string;
+  return_policy: string;
+  minimum_order_quantity: number;
   thumbnail: string;
-  preview: string;
-  full: string;
+  images: string;
+  barcode: string;
+  qr_code: string;
+  available_sizes: string;
+  unit: string;
+  color?: string;
 };

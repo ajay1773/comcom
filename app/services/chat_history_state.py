@@ -1,10 +1,13 @@
-import json
 from langchain_core.runnables import RunnableConfig
 from app.models.chat import GlobalState
 from langgraph.graph.state import CompiledStateGraph
 from typing import List, Dict, Any
 from app.services.db.conversation import conversation_service
 from app.services.auth import auth_service
+from app.services.widget_events import widget_event_emitter, WidgetEventType
+from datetime import datetime, date, time
+from decimal import Decimal
+from uuid import UUID
 
 
 class ConversationHistoryManager:
@@ -13,23 +16,92 @@ class ConversationHistoryManager:
     def __init__(self, max_history_items: int = 50):
         self.max_history_items = max_history_items
 
+    def _make_json_serializable(self, obj):
+        """
+        Convert any object to JSON-serializable format.
+        Handles AIMessage, BaseMessage, and other non-serializable objects.
+        """
+        if obj is None:
+            return None
+        
+        # Handle different types
+        if isinstance(obj, dict):
+            return {k: self._make_json_serializable(v) for k, v in obj.items()}
+        
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_serializable(item) for item in obj]
+        
+        elif hasattr(obj, 'content'):  # AIMessage, HumanMessage, etc.
+            return {
+                "type": obj.__class__.__name__,
+                "content": str(obj.content)
+            }
+        
+        elif hasattr(obj, 'model_dump'):  # Pydantic models
+            try:
+                # Recursively process the dumped data to handle nested datetime objects
+                dumped = obj.model_dump()
+                return self._make_json_serializable(dumped)
+            except Exception:
+                return str(obj)
+        
+        elif hasattr(obj, 'dict'):  # Pydantic v1 models
+            try:
+                # Recursively process the dict data to handle nested datetime objects
+                dict_data = obj.dict()
+                return self._make_json_serializable(dict_data)
+            except Exception:
+                return str(obj)
+        
+        # Handle datetime objects (do this early to catch them before other checks)
+        elif isinstance(obj, (datetime, date, time)):
+            return obj.isoformat()
+        
+        # Handle UUID objects
+        elif isinstance(obj, UUID):
+            return str(obj)
+        
+        # Handle Decimal objects
+        elif isinstance(obj, Decimal):
+            return float(obj)
+        
+        # Handle any object that has an isoformat method (catches other datetime types)
+        elif hasattr(obj, 'isoformat') and callable(obj.isoformat):
+            try:
+                return obj.isoformat()
+            except Exception:
+                return str(obj)
+        
+        # Handle basic types
+        elif isinstance(obj, (str, int, float, bool)):
+            return obj
+        
+        # Convert everything else to string
+        else:
+            return str(obj)
+
     def add_user_message(self, conversation_history: List[str], message: str) -> List[str]:
         """Add a user message to the conversation history."""
         conversation_history = conversation_history or []
         conversation_history.append(f"User: {message}")
         return self._trim_history(conversation_history)
 
-    def add_assistant_message(self, conversation_history: List[str], message: str, widget_json: Dict[str, Any] = None) -> List[str]:
+    def add_assistant_message(self, conversation_history: List[str], message: str) -> List[str]:
         """Add an assistant message to the conversation history."""
         conversation_history = conversation_history or []
+        latest_event = widget_event_emitter.get_latest_event()
         
         # Create the basic assistant message
         assistant_entry = f"Assistant: {message}"
         
         # If widget JSON is provided, append it as a JSON string
-        if widget_json:
+        if latest_event:
             import json
-            widget_json_str = json.dumps(widget_json, separators=(',', ':'))  # Compact JSON
+            # Use the serialization helper to handle non-serializable objects
+            serializable_payload = self._make_json_serializable(latest_event.payload)
+            # Handle both enum and string event types
+            event_type_value = latest_event.event_type.value if isinstance(latest_event.event_type, WidgetEventType) else str(latest_event.event_type)
+            widget_json_str = json.dumps({"widget_type": event_type_value, "payload": serializable_payload}, separators=(',', ':'))  # Compact JSON
             assistant_entry += f" | Widget: {widget_json_str}"
         
         conversation_history.append(assistant_entry)
