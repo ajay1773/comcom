@@ -165,7 +165,7 @@ const Sidebar = () => {
         <div className="flex w-full justify-between items-center px-6 mb-6">
           <div className="flex gap-2 items-center">
             <LuBrainCircuit className="text-blue-500 size-[40px]" />
-            <p className="text-2xl font-bold">Brainwave</p>
+            <p className="text-2xl font-bold">ComCom</p>
           </div>
           <div className="flex gap-2">
             <button

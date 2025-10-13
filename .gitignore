@@ -8,6 +8,8 @@ __pycache__/
 env/
 venv/
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 ENV/
 .idea/
 .vscode/
