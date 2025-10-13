@@ -1,7 +1,8 @@
 {
-  "name": "client",
+  "name": "comcom-client",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "ComCom - AI-Powered E-commerce Chatbot Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",

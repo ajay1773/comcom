@@ -1,7 +1,7 @@
 [project]
 name = "comcom"
-version = "0.1.0"
-description = "A simple chat API"
+version = "1.0.0"
+description = "ComCom - AI-Powered E-commerce Chatbot API"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

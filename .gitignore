@@ -7,9 +7,9 @@ __pycache__/
 .venv
 env/
 venv/
+*.sqlite
 ENV/
 .idea/
 .vscode/
-*.sqlite
 *.db
 .DS_Store
