@@ -11,6 +11,7 @@ from app.graph.subgraphs.fallback.graph import FallbackGraph
 from app.graph.workflows.signin.subgraphs.generate_signin_form.nodes.runner import run_generate_signin_form
 from app.core.enums import WorkflowType, NodeName, WorkflowStateKey
 from app.graph.workflows.product_search.nodes.runner import run_product_search
+from app.graph.workflows.product_comparison.nodes.runner import run_product_comparison
 import aiosqlite
 
 from app.graph.workflows.signup.subgraphs.generate_signup_form.nodes.runner import run_generate_signup_form
@@ -19,6 +20,7 @@ from app.graph.workflows.signin.subgraphs.login_with_credentials.nodes.runner im
 from app.services.auth_middleware import auth_middleware_service
 from app.graph.workflows.order_management.subgraphs.add_to_cart.nodes.runner import run_add_to_cart
 from app.graph.workflows.order_management.subgraphs.view_cart.nodes.runner import run_view_cart
+from app.graph.workflows.order_management.subgraphs.edit_cart.nodes.runner import run_edit_cart
 from app.graph.workflows.user_management.subgraphs.user_profile.nodes.runner import run_user_profile
 from app.graph.workflows.user_management.subgraphs.user_addresses.nodes.runner import run_user_addresses
 from app.graph.workflows.user_management.subgraphs.add_address.nodes.runner import run_add_address
@@ -66,6 +68,15 @@ async def run_auth_protected_view_cart(state: GlobalState, config=None) -> Globa
         state=state,
         target_workflow=WorkflowType.VIEW_CART,
         workflow_runner=run_view_cart,
+        config=config
+    )
+
+async def run_auth_protected_edit_cart(state: GlobalState, config=None) -> GlobalState:
+    """Run edit cart with auth middleware protection."""
+    return await auth_middleware_service.validate_and_execute(
+        state=state,
+        target_workflow=WorkflowType.EDIT_CART,
+        workflow_runner=run_edit_cart,
         config=config
     )
 
@@ -198,6 +209,7 @@ async def create_base_graph():
     # Add compiled subgraphs as nodes
     # Regular workflows (no auth required)
     graph.add_node(NodeName.PRODUCT_SEARCH_WORKFLOW, run_product_search)
+    graph.add_node(NodeName.PRODUCT_COMPARISON_WORKFLOW, run_product_comparison)
     graph.add_node(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, run_generate_signup_form)
     graph.add_node(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, run_signup_with_details)
     # graph.add_node(NodeName.PLACE_ORDER_WORKFLOW, place_order_graph)
@@ -211,6 +223,7 @@ async def create_base_graph():
     graph.add_node(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, run_auth_protected_place_order)
     graph.add_node(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, run_auth_protected_add_to_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, run_auth_protected_view_cart)
+    graph.add_node(NodeName.AUTH_PROTECTED_EDIT_CART_WORKFLOW, run_auth_protected_edit_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW, run_auth_protected_delete_from_cart)
     graph.add_node(NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW, run_auth_protected_user_profile)
     graph.add_node(NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW, run_auth_protected_user_addresses)
@@ -228,9 +241,11 @@ async def create_base_graph():
         {
             # Protected workflows (require authentication)
             WorkflowType.PRODUCT_SEARCH: NodeName.PRODUCT_SEARCH_WORKFLOW,
+            WorkflowType.PRODUCT_COMPARISON: NodeName.PRODUCT_COMPARISON_WORKFLOW,
             WorkflowType.PLACE_ORDER: NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
             WorkflowType.ADD_TO_CART: NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW,
             WorkflowType.VIEW_CART: NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW,
+            WorkflowType.EDIT_CART: NodeName.AUTH_PROTECTED_EDIT_CART_WORKFLOW,
             WorkflowType.DELETE_FROM_CART: NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW,
             WorkflowType.USER_PROFILE: NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW,
             WorkflowType.USER_ADDRESSES: NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW,
@@ -259,6 +274,7 @@ async def create_base_graph():
     
     # Regular workflows
     graph.add_edge(NodeName.PRODUCT_SEARCH_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.PRODUCT_COMPARISON_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.GENERATE_SIGNIN_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
@@ -272,6 +288,7 @@ async def create_base_graph():
     graph.add_edge(NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.AUTH_PROTECTED_VIEW_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.AUTH_PROTECTED_EDIT_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.AUTH_PROTECTED_USER_PROFILE_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW, NodeName.OUTPUT_HANDLER)

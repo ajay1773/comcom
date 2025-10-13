@@ -4,40 +4,26 @@ from app.graph.workflows.order_management.types import ViewCartState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.widget_events import widget_event_emitter, WidgetEventType
+from app.types.common import BASE_PERSONA_PROMPT
 
 async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
     """Handle successful view cart operation with LLM-generated response."""
 
     # Generate contextual success response using LLM
     success_prompt = ChatPromptTemplate.from_messages([
-        ("system", """# System Prompt - Role Section for E-commerce Chatbot
+        ("system", BASE_PERSONA_PROMPT + """
 
-        ## Your Role
+        ###Task:
+        - Show a summary of what's in user's cart.
 
-        You are a friendly and knowledgeable shopping assistant for COMCOM, designed to help customers discover products, make confident purchase decisions, and resolve any issues they encounter.
-
-        ## Your Communication Style
-
-        **Tone & Approach:**
-        - Be warm and welcoming, but respect the customer's time by being efficient
-        - Use conversational language that feels human, not robotic or scripted
-        - Use "I" and "you" to create a personal connection
-
-        **Proactive Assistance:**
-        - Anticipate needs based on the conversation context
-        - Offer relevant suggestions without being intrusive
-        - Suggest next steps to keep the customer's journey moving forward
-
-        Generate a friendly, informative response displaying their cart contents.
-
-        Guidelines:
-        - Be welcoming and helpful
-        - Show a summary of what's in their cart
+        ###Rules:
+        - Do not include clickable links
+        - Do not use technical words like "query", "results", or "response".
         - Include item count and total value
-        - Keep the tone conversational and encouraging
         - Keep the response concise but informative
+        - Do not tell user that you can show their cart as this node is already showing it.
 
-        Context:
+        ###Context:
         - User's original request: {user_query}
         - Number of different items: {cart_count}
         - Total quantity of all items: {total_items}
@@ -74,16 +60,30 @@ async def handle_view_cart_success_node(state: ViewCartState) -> ViewCartState:
                 "updated_at": item.updated_at,
                 "product_details": {
                     "id": item.product_details.id if item.product_details else None,
-                    "name": item.product_details.name if item.product_details else None,
+                    "title": item.product_details.title if item.product_details else None,
                     "category": item.product_details.category if item.product_details else None,
                     "price": item.product_details.price if item.product_details else None,
                     "gender": item.product_details.gender if item.product_details else None,
-                    "brand": item.product_details.brand if item.product_details else None,
                     "material": item.product_details.material if item.product_details else None,
                     "style": item.product_details.style if item.product_details else None,
                     "pattern": item.product_details.pattern if item.product_details else None,
                     "color": item.product_details.color if item.product_details else None,
                     "images": item.product_details.images if item.product_details else None,
+                    "available_sizes": item.product_details.available_sizes if item.product_details else None,
+                    "unit": item.product_details.unit if item.product_details else None,
+                    "brand": item.product_details.brand if item.product_details else None,
+                    "sku": item.product_details.sku if item.product_details else None,
+                    "weight": item.product_details.weight if item.product_details else None,
+                    "dimensions": item.product_details.dimensions if item.product_details else None,
+                    "warranty_information": item.product_details.warranty_information if item.product_details else None,
+                    "shipping_information": item.product_details.shipping_information if item.product_details else None,
+                    "availability_status": item.product_details.availability_status if item.product_details else None,
+                    "return_policy": item.product_details.return_policy if item.product_details else None,
+                    "minimum_order_quantity": item.product_details.minimum_order_quantity if item.product_details else None,
+                    "thumbnail": item.product_details.thumbnail if item.product_details else None,
+                    "images": item.product_details.images if item.product_details else None,
+                    "barcode": item.product_details.barcode if item.product_details else None,
+                    "qr_code": item.product_details.qr_code if item.product_details else None,
                     "available_sizes": item.product_details.available_sizes if item.product_details else None,
                     "unit": item.product_details.unit if item.product_details else None
                 } if item.product_details else None

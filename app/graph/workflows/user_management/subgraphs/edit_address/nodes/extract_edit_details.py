@@ -5,6 +5,7 @@ from app.graph.workflows.user_management.types import EditAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
+from app.utils.conversation_context import format_conversation_context_with_template
 
 
 class EditAddressDetails(BaseModel):
@@ -23,6 +24,14 @@ async def extract_edit_details_node(state: EditAddressState) -> EditAddressState
     """Extract address ID and new details from user message using LLM."""
     
     user_message = state.get("search_query", "")
+
+    # Get conversation context for better address extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="general",
+        limit=5,
+        fallback_message=""
+    )
 
     extraction_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an expert address editing assistant for an e-commerce system.
@@ -70,14 +79,16 @@ async def extract_edit_details_node(state: EditAddressState) -> EditAddressState
         3. Leave fields as null if not mentioned for updating
         4. Normalize state names to standard abbreviations
         5. Clean up formatting (proper capitalization, remove extra spaces)
+        6. If conversation context is available, consider user's previous address information
         """),
-        ("user", "{query}")
+        ("user", "{query}"),
+        ("user", "{conversation_context}")
     ])
 
     try:
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
 
-        response = cast(EditAddressDetails, await llm.with_structured_output(EditAddressDetails).ainvoke(extraction_prompt.invoke({"query": user_message})))
+        response = cast(EditAddressDetails, await llm.with_structured_output(EditAddressDetails).ainvoke(extraction_prompt.invoke({"query": user_message, "conversation_context": conversation_context})))
 
         # Store extracted details in state
         state["address_id"] = response.address_id

@@ -5,6 +5,7 @@ from app.graph.workflows.user_management.types import DeleteAddressState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
+from app.utils.conversation_context import format_conversation_context_with_template
 
 
 class DeleteAddressDetails(BaseModel):
@@ -16,6 +17,14 @@ async def extract_address_id_node(state: DeleteAddressState) -> DeleteAddressSta
     """Extract address ID from user message using LLM."""
     
     user_message = state.get("search_query", "")
+
+    # Get conversation context for better address ID extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="general",
+        limit=5,
+        fallback_message=""
+    )
 
     extraction_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an expert address deletion assistant for an e-commerce system.
@@ -51,14 +60,16 @@ async def extract_address_id_node(state: DeleteAddressState) -> DeleteAddressSta
         2. Look for patterns like "address 3", "ID 7", "address number 12", etc.
         3. The address_id must be a positive integer
         4. If no clear address ID is found, the extraction should fail
+        5. If conversation context is available, consider previous address interactions
         """),
-        ("user", "{query}")
+        ("user", "{query}"),
+        ("user", "{conversation_context}")
     ])
 
     try:
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
 
-        response = cast(DeleteAddressDetails, await llm.with_structured_output(DeleteAddressDetails).ainvoke(extraction_prompt.invoke({"query": user_message})))
+        response = cast(DeleteAddressDetails, await llm.with_structured_output(DeleteAddressDetails).ainvoke(extraction_prompt.invoke({"query": user_message, "conversation_context": conversation_context})))
 
         # Store extracted address ID in state
         state["address_id"] = response.address_id

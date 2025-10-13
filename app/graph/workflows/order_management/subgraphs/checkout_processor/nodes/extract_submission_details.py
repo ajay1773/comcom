@@ -4,6 +4,7 @@ from app.graph.workflows.order_management.types import CheckoutProcessorState
 from langchain_core.runnables import RunnableConfig
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.llm import llm_service
+from app.utils.conversation_context import format_conversation_context_with_template
 
 class CheckoutSubmission(BaseModel):
     """Checkout submission details extracted from user input."""
@@ -19,6 +20,14 @@ async def extract_submission_details_node(state: CheckoutProcessorState, config:
     """Extract checkout submission details from user's message."""
     
     user_message = state.get("search_query", "")
+    
+    # Get conversation context for better checkout extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="order_processing",
+        limit=5,
+        fallback_message=""
+    )
     
     try:
         # Create LLM prompt to extract checkout submission details
@@ -51,13 +60,15 @@ async def extract_submission_details_node(state: CheckoutProcessorState, config:
                 - Remove spaces and dashes from card numbers
                 - Use null for missing information
                 - Default payment method to "cash_on_delivery" if unclear
+                - If conversation context is available, consider previous address and payment interactions
             """),
             ("user", "{search_query}"),
+            ("user", "{conversation_context}"),
         ])
         
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
         response = cast(CheckoutSubmission, await llm.with_structured_output(CheckoutSubmission).ainvoke(
-            prompt.invoke({"search_query": user_message})
+            prompt.invoke({"search_query": user_message, "conversation_context": conversation_context})
         ))
         
         # Set the extracted details in state

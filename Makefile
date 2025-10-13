@@ -1,4 +1,4 @@
-.PHONY: dev install clean format lint help
+.PHONY: dev install clean format lint help setup-search
 # Default target
 .DEFAULT_GOAL := help
 
@@ -7,12 +7,13 @@ PORT = 8000
 
 help:
 	@echo "Available commands:"
-	@echo "  make install    - Install dependencies using uv"
-	@echo "  make dev       - Run development server with reload"
-	@echo "  make start     - Run production server"
-	@echo "  make clean     - Remove Python cache files"
-	@echo "  make format    - Format code using black"
-	@echo "  make lint      - Run linting using ruff"
+	@echo "  make install             - Install dependencies using uv"
+	@echo "  make dev                 - Run development server with reload"
+	@echo "  make start               - Run production server"
+	@echo "  make clean               - Remove Python cache files"
+	@echo "  make format              - Format code using black"
+	@echo "  make lint                - Run linting using ruff"
+	@echo "  make setup-search        - Setup product search indexes"
 
 install:
 	uv pip install -e ".[dev]"
@@ -42,3 +43,7 @@ setup-vscode:
 	code --install-extension ms-python.python
 	code --install-extension ms-python.black-formatter
 	code --install-extension charliermarsh.ruff
+
+setup-search:
+	@echo "🚀 Setting up Product Search Pipeline..."
+	uv run python scripts/setup_product_search.py

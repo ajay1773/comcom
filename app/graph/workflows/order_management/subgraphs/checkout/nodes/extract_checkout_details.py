@@ -7,6 +7,7 @@ from app.graph.workflows.order_management.types import CheckoutState
 from langchain_core.runnables import RunnableConfig
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.llm import llm_service
+from app.utils.conversation_context import format_conversation_context_with_template
 
 class CheckoutIntent(BaseModel):
     """Checkout intent extracted from user prompt."""
@@ -21,6 +22,14 @@ async def extract_checkout_details_node(state: CheckoutState, config: RunnableCo
     """Extract checkout details and determine checkout type from user's message."""
     
     user_message = state.get("user_message", "")
+    
+    # Get conversation context for better checkout extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="order_processing",
+        limit=5,
+        fallback_message=""
+    )
     
     try:
         # Create LLM prompt to determine checkout type and extract product details
@@ -61,13 +70,15 @@ async def extract_checkout_details_node(state: CheckoutState, config: RunnableCo
                 - Extract exact names and details as mentioned
                 - Use null for missing information
                 - Quantity defaults to 1 for direct purchases
+                - If conversation context is available, consider previous cart or product interactions
             """),
             ("user", "{user_message}"),
+            ("user", "{conversation_context}"),
         ])
         
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
         response = cast(CheckoutIntent, await llm.with_structured_output(CheckoutIntent).ainvoke(
-            prompt.invoke({"user_message": user_message})
+            prompt.invoke({"user_message": user_message, "conversation_context": conversation_context})
         ))
         
         # Set the checkout type and product details in state

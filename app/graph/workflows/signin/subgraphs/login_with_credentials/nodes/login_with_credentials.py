@@ -7,6 +7,8 @@ from app.services.llm import llm_service
 from app.services.jwt import JWTService
 from app.services.auth import auth_service
 from app.services.widget_events import widget_event_emitter, WidgetEventType
+from app.types.common import BASE_PERSONA_PROMPT
+from app.utils.conversation_context import format_conversation_context_with_template
 
 
 async def login_with_credentials_node(state: LoginWithCredentialsState) -> LoginWithCredentialsState:
@@ -16,6 +18,12 @@ async def login_with_credentials_node(state: LoginWithCredentialsState) -> Login
     user = state.get("user")
     credentials = state.get("credentials", {})
     thread_id = state.get("thread_id", "")
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="general",
+        limit=5,
+        fallback_message=""
+    )
     
     if user and credentials:
         try:
@@ -27,21 +35,21 @@ async def login_with_credentials_node(state: LoginWithCredentialsState) -> Login
             if stored_password_hash and PasswordService.verify_password(provided_password, stored_password_hash):
                 # Successful login
                 success_prompt_template = ChatPromptTemplate.from_messages([
-                    ("system", """
-                    You are an e-commerce system.
-                        Generate ONLY one short, friendly sentence that:
-                        1. Welcomes the user back and confirms successful login.
-                        2. Does not include technical words (like 'query', 'results', 'response').
-                        3. Does not include email, password, or any sensitive details.
-                        4. Does not add extra instructions like "let us know if you need help" or "best regards".
-                        5. Keeps the tone conversational, natural, and concise.
-                        6. End the message by suggesting they can start browsing or looking for what they want.
+                    ("system", BASE_PERSONA_PROMPT + """
+                    ###TASK:
+                    - Welcomes the user back and confirms successful login.
 
-                        Output must be a single sentence, nothing else.
+                    ###RULES:
+                    - Does not include technical words (like 'query', 'results', 'response').
+                    - Does not include email, password, or any sensitive details.
+                    - Does not add extra instructions like "let us know if you need help" or "best regards".
+                    - Keeps the tone conversational, natural, and concise.
+                    - End the message by suggesting they can start browsing or looking for what they want.
                     """,),
-                    ("user", "User has successfully logged in with email: {email}")
+                    ("assistant", "{conversation_context}"),
+                    ("user", "User has successfully logged in with email: {email}"),
                 ])
-                success_prompt = await llm.ainvoke(success_prompt_template.invoke({"email": user.email}))
+                success_prompt = await llm.ainvoke(success_prompt_template.invoke({"email": user.email, "conversation_context": conversation_context}))
                 
                 # Create session in database (for conversation management)
                 session_token = None
@@ -72,21 +80,24 @@ async def login_with_credentials_node(state: LoginWithCredentialsState) -> Login
                 # Set authentication state
                 state["is_authenticated"] = True
                 state["user_id"] = user.id
-                state["session_token"] = auth_token
                 
             else:
                 # Invalid password
                 failure_prompt_template = ChatPromptTemplate.from_messages([
-                    ("system", """You are an e-commerce system. Generate a short, friendly message that: 
-                    1. Politely informs the user that the password is incorrect. 
-                    2. Do not use technical words like 'query', 'results', or 'response'. 
-                    3. Keeps the tone conversational and natural, as if chatting with a human. 
-                    4. Suggest they try again or reset their password.
-                    5. Do not send the email or password in the message back to the user.
-                    6. Simply tell the user that the password is incorrect and suggest them to try again or reset their password.""",),
+                    ("system", BASE_PERSONA_PROMPT + """
+                    ###TASK:
+                    - Politely informs the user that the password is incorrect.
+
+                    ###RULES:
+                    - Do not use technical words like 'query', 'results', or 'response'.
+                    - Keeps the tone conversational and natural, as if chatting with a human.
+                    - Suggest they try again or reset their password.
+                    - Do not tell user to use the forget password feature as that is not a feature of the system.
+                    """,),
+                    ("assistant", "{conversation_context}"),
                     ("user", "User provided incorrect password for email: {email}")
                 ])
-                failure_prompt = await llm.ainvoke(failure_prompt_template.invoke({"email": credentials.get("email", "")}))
+                failure_prompt = await llm.ainvoke(failure_prompt_template.invoke({"email": credentials.get("email", ""), "conversation_context": conversation_context}))
                 
                 state['suggestions'] = [cast(str, failure_prompt)]
                 widget_event_emitter.emit(
@@ -100,16 +111,21 @@ async def login_with_credentials_node(state: LoginWithCredentialsState) -> Login
         except Exception:
             # Handle any errors during login
             error_prompt_template = ChatPromptTemplate.from_messages([
-                ("system", """You are an e-commerce system. Generate a short, friendly message that: 
-                1. Politely informs the user that login failed due to a technical issue. 
-                2. Do not use technical words like 'query', 'results', or 'response'. 
-                3. Keeps the tone conversational and natural, as if chatting with a human. 
-                4. Suggest they try again later.
-                5. Do not send the email or password in the message back to the user.
-                6. Simply tell the user that login failed due to a technical issue and suggest them to try again later.""",),
+                ("system", BASE_PERSONA_PROMPT + """
+                ###TASK:
+                - Politely informs the user that login failed due to a technical issue.
+
+                ###RULES:
+                - Do not use technical words like 'query', 'results', or 'response'.
+                - Keeps the tone conversational and natural, as if chatting with a human.
+                - Suggest they try again later.
+                - Do not send the email or password in the message back to the user.
+                - Do not tell user to use the forget password feature as that is not a feature of the system.
+                """,),
+                ("assistant", "{conversation_context}"),
                 ("user", "Login failed due to technical error")
             ])
-            error_prompt = await llm.ainvoke(error_prompt_template.invoke({}))
+            error_prompt = await llm.ainvoke(error_prompt_template.invoke({"conversation_context": conversation_context}))
             
             state['suggestions'] = [cast(str, error_prompt)]
             widget_event_emitter.emit(
@@ -122,17 +138,21 @@ async def login_with_credentials_node(state: LoginWithCredentialsState) -> Login
     else:
         # No user found
         no_user_prompt_template = ChatPromptTemplate.from_messages([
-            ("system", """You are an e-commerce system. Generate a short, friendly message that: 
-            1. Politely informs the user that no account exists with the provided email. 
-            2. Do not use technical words like 'query', 'results', or 'response'. 
-            3. Keeps the tone conversational and natural, as if chatting with a human. 
-            4. Do not use any exclamation marks.
-            5. Suggest they sign up for a new account or try again.
-            6. Do not send the email or password in the message back to the user.
-            """),
+            ("system", BASE_PERSONA_PROMPT + """
+            ###TASK:
+            - Politely informs the user that no account exists with the provided email.
+
+            ###RULES:
+            - Do not use technical words like 'query', 'results', or 'response'.
+            - Keeps the tone conversational and natural, as if chatting with a human.
+            - Suggest they sign up for a new account or try again.
+            - Do not send the email or password in the message back to the user.
+            - Do not tell user to use the forget password feature as that is not a feature of the system.
+            """,),
+            ("assistant", "{conversation_context}"),
             ("user", "No user found with email: {email}"),
         ])
-        no_user_prompt = await llm.ainvoke(no_user_prompt_template.invoke({"email": credentials.get("email", "")}))
+        no_user_prompt = await llm.ainvoke(no_user_prompt_template.invoke({"email": credentials.get("email", ""), "conversation_context": conversation_context}))
         
         state['suggestions'] = [cast(str, no_user_prompt)]
         widget_event_emitter.emit(

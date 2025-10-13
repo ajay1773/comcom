@@ -3,6 +3,7 @@ from app.services.llm import llm_service
 from app.services.workflow_state import get_workflow_state, update_workflow_state
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
+from app.utils.conversation_context import format_conversation_context_with_template
 
 class ProductDetails(BaseModel):
     """Product details extracted from user prompt."""
@@ -16,6 +17,14 @@ async def extract_product_details_node(state: GlobalState) -> GlobalState:
     # Get workflow-specific state
     workflow_state = get_workflow_state(state, "place_order")
     user_message = state.get("user_message", "")
+
+    # Get conversation context for better product extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="order_processing",
+        limit=5,
+        fallback_message=""
+    )
 
     extractor_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a parameter extractor for an e-commerce system.
@@ -44,13 +53,15 @@ async def extract_product_details_node(state: GlobalState) -> GlobalState:
         2. Include the full product name with color if mentioned
         3. Keep brand names exactly as written
         4. Do not add or remove any words from the names
+        5. If conversation context is available, consider user's previous preferences when extracting details
         """),
-        ("user", "{query}")
+        ("user", "{query}"),
+        ("user", "{conversation_context}")
     ])
 
     llm = llm_service.get_llm_without_tools(disable_streaming=True)
 
-    response = await llm.with_structured_output(ProductDetails).ainvoke(extractor_prompt.invoke({"query": user_message}))
+    response = await llm.with_structured_output(ProductDetails).ainvoke(extractor_prompt.invoke({"query": user_message, "conversation_context": conversation_context}))
 
     # Update workflow state with extracted parameters
     workflow_state = {

@@ -2,11 +2,20 @@ from app.graph.workflows.product_search.types import ProductSearchState
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.llm import llm_service
 from app.services.widget_events import WidgetEventType, widget_event_emitter
+from app.utils.conversation_context import format_conversation_context_with_template
 
 
 async def handle_no_filters_node(state: ProductSearchState) -> ProductSearchState:
     """Handle cases when no filters are provided by the user."""
     search_query = state.get("search_query", "")
+    
+    # Get conversation context for better understanding
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="search_refinement",
+        limit=5,
+        fallback_message=""
+    )
     
     template_prompt = ChatPromptTemplate.from_messages([
         ("system", """
@@ -36,9 +45,10 @@ async def handle_no_filters_node(state: ProductSearchState) -> ProductSearchStat
         7. Keep the response concise but engaging and style-focused
         """),
         ("user", "{search_query}"),
+        ("user", "{conversation_context}")
     ])
 
-    messages = template_prompt.invoke({"search_query": search_query})
+    messages = template_prompt.invoke({"search_query": search_query, "conversation_context": conversation_context})
     llm = llm_service.get_llm_without_tools()
     response = await llm.ainvoke(messages)
     response_content = str(response.content) if hasattr(response, "content") else str(response)

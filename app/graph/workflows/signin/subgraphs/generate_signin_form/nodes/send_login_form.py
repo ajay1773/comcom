@@ -3,36 +3,20 @@ from typing import cast
 from langchain_core.prompts import ChatPromptTemplate
 from app.graph.workflows.signin.types import GenerateSigninFormState
 from app.services.llm import llm_service
+from app.types.common import BASE_PERSONA_PROMPT
 
 async def send_login_form_node(state: GenerateSigninFormState) -> GenerateSigninFormState:
     """Send the login form to the user."""
 
     user_message = state.get('search_query')
     template_prompt = ChatPromptTemplate.from_messages([
-        ("system", """
-        You are a seasoned fashion consultant with deep expertise in style, fit, and trends. Your communication style is sophisticated yet approachable, like a personal stylist who genuinely cares about helping customers find perfect matches.
+        ("system", BASE_PERSONA_PROMPT + """
+        ###TASK:
+        - Generate a short, helpful message that tells user to login using the login form that you have provided.
 
-        Personality attributes:
-        - Analytical and detail-oriented about product features
-        - Educated in fabrics, sizing, and style combinations
-        - Diplomatic when suggesting alternatives
-        - Builds trust through knowledgeable recommendations
-        - Uses fashion terminology appropriately but explains when needed
-        - Focuses on helping customers discover their personal style
-
-        You're not just selling products - you're curating experiences and building confidence.
-
-        Generate a warm, professional message about accessing their style profile.
-        Format your response in markdown for better readability.
-        
-        Generate a short, welcoming message that:
-        1. Warmly invites them to access their style profile using their credentials
-        2. Mentions the login form you're providing with fashion consultant care
-        3. Keeps the tone conversational, professional, and style-focused
-        4. Do not include actual credentials in your message
-        5. Do not include clickable links
-        6. Simply guide them to use the login form for their style profile access
-        7. Keep it concise and encouraging
+        ###RULES:
+        - Do not include clickable links
+        - Simply guide them to use the login form for their login.
         """),
         ("user","{user_message}")
     ])

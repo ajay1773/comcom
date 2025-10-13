@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from app.services.db.db import CartItemWithProductDetails, db_service, UserCart, CartItem, CartItemCreate, Product
 from datetime import datetime, timedelta
 
@@ -209,6 +209,90 @@ class CartService:
             print(f"Error in remove_item_from_cart_by_id: {e}")
             return False
     
+    async def remove_cart_item_by_cart_item_id(self, user_id: int, cart_item_id: int) -> bool:
+        """Remove a specific cart item by its cart_item_id."""
+        try:
+            cart = await self.get_or_create_cart(user_id)
+
+            # Delete the item
+            await self.db_service.execute_query(
+                "DELETE FROM cart_items WHERE id = ? AND cart_id = ?",
+                (cart_item_id, cart.id)
+            )
+
+            # Update cart totals
+            await self._update_cart_totals(cart.id)
+
+            return True
+        except Exception as e:
+            print(f"Error in remove_cart_item_by_cart_item_id: {e}")
+            return False
+    
+    async def update_cart_item_properties(
+        self, 
+        user_id: int, 
+        cart_item_id: int,
+        size: str | None = None,
+        color: str | None = None
+    ) -> Optional[CartItem]:
+        """Update properties (size, color) of a cart item."""
+        try:
+            cart = await self.get_or_create_cart(user_id)
+            
+            # Build update query dynamically based on what's being updated
+            updates = []
+            params = []
+            
+            if size is not None:
+                updates.append("size = ?")
+                params.append(size)
+            
+            if color is not None:
+                updates.append("color = ?")
+                params.append(color)
+            
+            if not updates:
+                # Nothing to update
+                return None
+            
+            # Add updated_at
+            updates.append("updated_at = CURRENT_TIMESTAMP")
+            
+            # Add WHERE clause parameters
+            params.extend([cart_item_id, cart.id])
+            
+            # Execute update
+            query = f"""UPDATE cart_items 
+                       SET {', '.join(updates)}
+                       WHERE id = ? AND cart_id = ?
+                       RETURNING id, cart_id, product_id, quantity, unit_price, total_price, 
+                                 size, color, unit, selected_options, added_at, updated_at"""
+            
+            result = await self.db_service.execute_query(query, tuple(params))
+            
+            if not result:
+                return None
+            
+            row = result[0]
+            return CartItem(
+                id=row[0],
+                cart_id=row[1],
+                product_id=row[2],
+                quantity=row[3],
+                unit_price=row[4],
+                total_price=row[5],
+                size=row[6],
+                color=row[7],
+                unit=row[8],
+                selected_options=row[9],
+                added_at=row[10] or "1970-01-01 00:00:00",
+                updated_at=row[11] or "1970-01-01 00:00:00"
+            )
+            
+        except Exception as e:
+            print(f"Error in update_cart_item_properties: {e}")
+            return None
+    
     async def clear_cart(self, user_id: int) -> bool:
         """Clear all items from the user's cart."""
         cart = await self.get_or_create_cart(user_id)
@@ -286,13 +370,19 @@ class CartService:
                 """SELECT
                     ci.id, ci.cart_id, ci.product_id, ci.quantity, ci.unit_price, ci.total_price,
                     ci.size, ci.color, ci.unit, ci.selected_options, ci.added_at, ci.updated_at,
-                    p.name, p.category, p.price, p.gender, p.brand, p.material, p.style,
-                    p.pattern, p.color, p.images, p.available_sizes, p.unit
+                    p.title, p.description, p.category, p.price, p.discount_percentage, p.rating, p.stock,
+                    p.tags, p.brand, p.sku, p.weight, p.dimensions, p.warranty_information, 
+                    p.shipping_information, p.availability_status, p.return_policy, p.minimum_order_quantity,
+                    p.thumbnail, p.images, p.barcode, p.qr_code, p.available_sizes, p.unit,
+                    p.gender, p.material, p.style, p.pattern, p.color
                 FROM cart_items ci
                 JOIN products p ON ci.product_id = p.id
                 WHERE ci.cart_id = ?""",
                 (cart.id,)
             )
+            
+            import json
+            
             return [
                 CartItemWithProductDetails(
                     id=row[0],
@@ -309,18 +399,34 @@ class CartService:
                     updated_at=row[11] or "1970-01-01 00:00:00",  # Default if None
                     product_details=Product(
                         id=row[2],  # product_id from cart_items
-                        name=row[12],
-                        category=row[13],
-                        price=row[14],
-                        gender=row[15],
-                        brand=row[16],
-                        material=row[17],
-                        style=row[18],
-                        pattern=row[19],
-                        color=row[20],
-                        images=row[21],
-                        available_sizes=row[22],
-                        unit=row[23]
+                        title=row[12],
+                        description=row[13],
+                        category=row[14],
+                        price=row[15],
+                        discount_percentage=row[16],
+                        rating=row[17],
+                        stock=row[18],
+                        tags=json.loads(row[19]) if row[19] else [],
+                        brand=row[20],
+                        sku=row[21],
+                        weight=row[22],
+                        dimensions=json.loads(row[23]) if row[23] else {},
+                        warranty_information=row[24],
+                        shipping_information=row[25],
+                        availability_status=row[26],
+                        return_policy=row[27],
+                        minimum_order_quantity=row[28],
+                        thumbnail=row[29],
+                        images=json.loads(row[30]) if row[30] else [],
+                        barcode=row[31],
+                        qr_code=row[32],
+                        available_sizes=json.loads(row[33]) if row[33] else [],
+                        unit=row[34],
+                        gender=row[35],
+                        material=row[36],
+                        style=row[37],
+                        pattern=row[38],
+                        color=row[39]
                     )
                 )
                 for row in result

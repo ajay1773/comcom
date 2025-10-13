@@ -9,7 +9,9 @@ from app.models.user import UserAddress
 
 class AddToCartState(CommonState, AuthState):
     product_details: Dict[str, Any]
-    quantity: int
+    size: str | None
+    color: str | None
+    quantity: str
     operation_success: bool
     error_message: str
     cart_details: List[CartItemWithProductDetails]
@@ -23,6 +25,9 @@ class ViewCartState(CommonState, AuthState):
 
 class DeleteFromCartState(CommonState, AuthState):
     product_details: Dict[str, Any]
+    size: str | None
+    color: str | None
+    quantity: int
     workflow_output_text: str | None
     workflow_output_json: Dict[str, Any] | None
     error_message: str | None
@@ -116,3 +121,32 @@ class OrderViewState(CommonState, AuthState):
     workflow_output_text: str | None
     error_message: str | None
     view_success: bool
+
+
+class EditCartState(CommonState, AuthState):
+    """State for edit cart workflow."""
+    # Edit operation details
+    edit_type: str | None  # "remove", "update_quantity", "update_properties", "replace"
+    target_product_reference: str | None  # How user refers to the item (e.g., "that shirt", "the red one")
+    
+    # Item identification
+    matched_cart_item: Dict[str, Any] | None  # The cart item that was identified
+    cart_item_id: int | None
+    
+    # Edit parameters
+    new_quantity: int | None  # For quantity updates
+    new_size: str | None  # For property updates
+    new_color: str | None  # For property updates
+    replacement_product: Dict[str, Any] | None  # For replacements
+    
+    # Cart data
+    cart_details: List[CartItemWithProductDetails] | None
+    updated_cart_details: List[CartItemWithProductDetails] | None
+    
+    # Workflow control
+    edit_success: bool
+    
+    # Standard workflow outputs
+    workflow_output_text: str | None
+    workflow_output_json: Dict[str, Any] | None
+    error_message: str | None

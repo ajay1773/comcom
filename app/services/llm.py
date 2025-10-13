@@ -20,6 +20,12 @@ class LLMService:
             model=self.ollama_model,
             temperature=self.temperature,
         )
+
+    def get_ollama_model(self) -> ChatOllama:
+        """
+        Return a ChatOllama instance.
+        """
+        return self.ollama_model_instance
     
 
     def get_llm(self, disable_streaming: bool = False) -> ChatGroq:

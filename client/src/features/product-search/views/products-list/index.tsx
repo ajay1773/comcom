@@ -81,9 +81,11 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
             const discountedPrice =
               originalPrice * (1 - discountPercentage / 100);
 
-            const productImages = JSON.parse(
-              get(product, "images", "[]")
-            ) as string[];
+            const imagesData = get(product, "images", "[]");
+            const productImages =
+              typeof imagesData === "string"
+                ? (JSON.parse(imagesData) as string[])
+                : (imagesData as string[]);
 
             return (
               <Card
@@ -131,14 +133,6 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                     <h3 className="text-sm font-medium line-clamp-2 leading-tight">
                       {get(product, "title", "")}
                     </h3>
-
-                    {/* Description */}
-                    {has(product, "description") &&
-                      get(product, "description") && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {get(product, "description")}
-                        </p>
-                      )}
 
                     {/* Price */}
                     <div className="flex items-center gap-2">

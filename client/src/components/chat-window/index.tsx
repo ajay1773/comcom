@@ -49,6 +49,10 @@ import type { CheckoutUIProviderData } from "@/features/cart-management/types";
 import OrdersWindow, {
   type OrdersWindowProps,
 } from "@/features/cart-management/views/orders-window";
+import ProductsComparison from "@/features/product-comparison/views/products-comparison";
+import type { ProductComparisonPayload } from "@/features/product-comparison/types";
+import StatusCard from "../status-card";
+import { get } from "lodash";
 
 const MoreOptionsDropdown = () => {
   const { setWidgetJson, logout } = useChatStore();
@@ -96,6 +100,23 @@ const MoreOptionsDropdown = () => {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+};
+
+// Helper function to get icon component for StatusCard
+const getStatusCardIcon = (iconName: string) => {
+  const iconMap: Record<string, React.ReactNode> = {
+    "search-x": <LuCircleX className="h-8 w-8 text-red-500" />,
+    "package-plus": <LuBookmark className="h-8 w-8 text-blue-500" />,
+    "alert-triangle": <LuEllipsis className="h-8 w-8 text-yellow-500" />,
+  };
+  return iconMap[iconName] || <LuCircleX className="h-8 w-8 text-gray-500" />;
+};
+
+// Helper function to handle StatusCard actions
+const handleStatusCardAction = (action: string) => {
+  console.log("StatusCard action:", action);
+  // TODO: Implement specific actions based on action type
+  // e.g., search_products, show_help, search_similar, etc.
 };
 
 const ChatWindow = () => {
@@ -240,6 +261,37 @@ const ChatWindow = () => {
         return <CheckoutForm data={payload as CheckoutUIProviderData} />;
       case "order_view_success":
         return <OrdersWindow {...(payload as OrdersWindowProps)} />;
+      case "product_comparison_results":
+        return (
+          <ProductsComparison payload={payload as ProductComparisonPayload} />
+        );
+      case "status_card_no_products_found":
+      case "status_card_category_mismatch":
+      case "status_card_comparison_error":
+        return (
+          <StatusCard
+            icon={getStatusCardIcon(get(payload, "icon", "search-x"))}
+            title={get(payload, "title", "No Products Found")}
+            subtitle={get(payload, "subtitle", "No Products Found")}
+            actions={
+              get(payload, "actions", []) && (
+                <div className="flex gap-2 flex-wrap">
+                  {get(payload, "actions", []).map((action, index) => (
+                    <button
+                      key={index}
+                      className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                      onClick={() =>
+                        handleStatusCardAction(get(action, "action", ""))
+                      }
+                    >
+                      {get(action, "label", "")}
+                    </button>
+                  ))}
+                </div>
+              )
+            }
+          />
+        );
       default:
         return <></>;
     }

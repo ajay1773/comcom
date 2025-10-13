@@ -2,6 +2,7 @@ from typing import cast
 from langchain_core.prompts import ChatPromptTemplate
 from app.graph.workflows.auth_middleware.types import AuthMiddlewareState
 from app.services.llm import llm_service
+from app.utils.conversation_context import format_conversation_context_with_template
 
 
 async def handle_invalid_token_node(state: AuthMiddlewareState) -> AuthMiddlewareState:
@@ -13,6 +14,14 @@ async def handle_invalid_token_node(state: AuthMiddlewareState) -> AuthMiddlewar
     llm = llm_service.get_llm_without_tools()
     auth_error = state.get("auth_error", "Authentication failed")
     target_workflow = state.get("target_workflow", "requested action")
+    
+    # Get conversation context for better error message
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="general",
+        limit=5,
+        fallback_message=""
+    )
     
     # Create prompt template for auth error message
     auth_error_prompt_template = ChatPromptTemplate.from_messages([
@@ -26,14 +35,16 @@ async def handle_invalid_token_node(state: AuthMiddlewareState) -> AuthMiddlewar
         
         Output must be a single friendly sentence, nothing else.
         """),
-        ("user", "User tried to access {target_workflow} but authentication failed: {error}")
+        ("user", "User tried to access {target_workflow} but authentication failed: {error}"),
+        ("user", "{conversation_context}")
     ])
     
     # Generate error message using LLM
     error_message = await llm.ainvoke(
         auth_error_prompt_template.invoke({
             "target_workflow": target_workflow,
-            "error": auth_error
+            "error": auth_error,
+            "conversation_context": conversation_context
         })
     )
     

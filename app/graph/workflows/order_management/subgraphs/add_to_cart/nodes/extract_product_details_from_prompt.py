@@ -11,7 +11,8 @@ class ProductDetails(BaseModel):
     title: str | None = None
     brand: str
     size: str | None = None
-    quantity: int = 1
+    quantity: str = '1'
+    color: str | None = None
 
 async def extract_product_details_from_prompt_node(state: AddToCartState) -> AddToCartState:
     """
@@ -24,18 +25,6 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
     # Get conversation context for better product extraction
     conversation_context = get_conversation_context_for_workflow(state, limit=5)
 
-    # Build context-aware prompt
-    context_section = ""
-    if conversation_context:
-        context_section = f"""
-        CONVERSATION CONTEXT:
-        The following is the recent conversation history to help you understand the user's preferences and previous interactions:
-
-        {conversation_context}
-
-        Use this context to better understand the user's current request and any preferences they've expressed.
-        """
-
     extractor_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a parameter extractor for an e-commerce system.
         Extract product details from user's purchase request.
@@ -46,7 +35,8 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         - title: Product title/name
         - brand: The brand name as mentioned (e.g., "Nike", "Mclaughlin-Castillo")
         - size: The size if mentioned (e.g., "M", "Large", "10", "XL") - null if not mentioned
-        - quantity: The quantity mentioned (default: 1)
+        - quantity: The quantity mentioned (default: "1")
+        - color: The color if mentioned (e.g., "Red", "Blue", "Green") - null if not mentioned
 
         EXAMPLES:
         Input: "I'd like to buy the Summer Breeze T-shirt by Nike in size M"
@@ -55,7 +45,8 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
             "title": "Summer Breeze T-shirt",
             "brand": "Nike",
             "size": "M",
-            "quantity": 1
+            "quantity": "1",
+            "color": null
         }}
 
         Input: "I want to order 2 Aliceblue Sweaters by Mclaughlin-Castillo in Large"
@@ -64,7 +55,8 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
             "title": "Aliceblue Sweater",
             "brand": "Mclaughlin-Castillo",
             "size": "Large",
-            "quantity": 2
+            "quantity": "2",
+            "color": null
         }}
 
         Input: "Add the Red Dress by Fashion Co to my cart"
@@ -73,7 +65,8 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
             "title": "Red Dress",
             "brand": "Fashion Co",
             "size": null,
-            "quantity": 1
+            "quantity": "1",
+            "color": null
         }}
 
         RULES:
@@ -81,17 +74,19 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
         2. Include the full product name with color if mentioned in the name
         3. Keep brand names exactly as written
         4. Extract size only if explicitly mentioned (L, XL, 10, Small, etc.)
-        5. Extract quantity from numbers like "2", "three", etc. (default: 1)
+        5. Extract quantity from numbers like "2", "three", etc. (default: "1")
+        6. Extract color from product names or separate mentions (Red, Blue, etc.)
         6. Extract the product title/name
         7. Do not add or remove any words from the names
         8. If conversation context is available, consider user's previous preferences when extracting details
-        """ + context_section),
+        """ ),
+        ("assistant", "{conversation_context}"),
         ("user", "{query}")
     ])
 
     llm = llm_service.get_llm_without_tools(disable_streaming=True)
 
-    response = await llm.with_structured_output(ProductDetails).ainvoke(extractor_prompt.invoke({"query": user_message}))
+    response = await llm.with_structured_output(ProductDetails).ainvoke(extractor_prompt.invoke({"query": user_message, "conversation_context": conversation_context}))
 
     # Update workflow state with extracted parameters
     response = cast(ProductDetails, response)
@@ -101,4 +96,6 @@ async def extract_product_details_from_prompt_node(state: AddToCartState) -> Add
     
     state["product_details"] = product_details
     state["quantity"] = response.quantity
+    state["size"] = response.size
+    state["color"] = response.color
     return state

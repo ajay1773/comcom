@@ -5,6 +5,7 @@ from app.models.chat import GlobalState
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
 from datetime import datetime
+from app.utils.conversation_context import format_conversation_context_with_template
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ async def error_handler_node(
 
         # Generate user-friendly error message
         error_response = await _generate_error_message(
-            error_type, error_message, workflow_name, recovery_options
+            error_type, error_message, workflow_name, recovery_options, state
         )
 
         # Update state with error information
@@ -111,10 +112,18 @@ def _generate_recovery_options(error_type: str, workflow_name: str) -> list[str]
 
 
 async def _generate_error_message(
-    error_type: str, error_message: str, workflow_name: str, recovery_options: list[str]
+    error_type: str, error_message: str, workflow_name: str, recovery_options: list[str], state: GlobalState = None
 ) -> str:
     """Generate a user-friendly error message using LLM."""
     try:
+        # Get conversation context for better error message
+        conversation_context = format_conversation_context_with_template(
+            state=dict(state) if state else {},
+            template_name="general",
+            limit=5,
+            fallback_message=""
+        ) if state else ""
+        
         error_prompt = ChatPromptTemplate.from_messages([
             ("system", """
                 You are an error message generator for an e-commerce chatbot.
@@ -137,7 +146,8 @@ async def _generate_error_message(
             ("user", """
                 Please generate a user-friendly error message for this situation.
                 Make it helpful and actionable.
-            """)
+            """),
+            ("user", "{conversation_context}")
         ])
 
         llm = llm_service.get_llm_without_tools()
@@ -146,7 +156,8 @@ async def _generate_error_message(
                 "workflow_name": workflow_name,
                 "error_type": error_type,
                 "error_message": error_message,
-                "recovery_options": ", ".join(recovery_options)
+                "recovery_options": ", ".join(recovery_options),
+                "conversation_context": conversation_context
             })
         )
 

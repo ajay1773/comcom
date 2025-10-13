@@ -3,38 +3,99 @@ from typing import Literal
 
 
 class Entities(BaseModel):
-    """Entities model for product search parameters."""
+    """
+    Simplified Pydantic model for FTS5-based search parameter extraction.
+    Used with .with_structured_output() for ONE-TIME LLM extraction.
+    """
 
-    # EXACT DummyJSON categories
-    product_category: (
-        Literal[
-            "beauty", "fragrances", "furniture", "groceries", "home-decoration",
-            "smartphones", "laptops", "tablets", "mens-shirts", "womens-dresses",
-            "womens-shoes", "mens-shoes", "womens-watches", "mens-watches",
-            "womens-bags", "womens-jewellery", "sunglasses", "automotive",
-            "motorcycle", "lighting", "sports-accessories", "kitchen-accessories",
-            "mobile-accessories", "skincare", "tops", "vehicle"
-        ] | None
-    ) = Field(..., description="The exact DummyJSON category of the product")
+    # Main search keywords (used for FTS5 full-text search)
+    keywords: str = Field(
+        default="",
+        description="Main search terms extracted from query (product type, brand, attributes). Example: 'red shoes', 'Nike running shoes', 'iPhone 14 Pro'"
+    )
+
+    # Price filters
+    price_min: float | None = Field(
+        default=None,
+        description="Minimum price if mentioned",
+        ge=0
+    )
+    price_max: float | None = Field(
+        default=None,
+        description="Maximum price if mentioned",
+        ge=0
+    )
+
+    # Rating filter
+    rating_min: float | None = Field(
+        default=None,
+        description="Minimum rating (0-5) if mentioned",
+        ge=0,
+        le=5
+    )
+
+    # Gender filter (simplified: M, F, or null)
+    gender: Literal["M", "F"] | None = Field(
+        default=None,
+        description="Gender: 'M' for men/male, 'F' for women/female, null if unspecified"
+    )
+
+    # Optional brand list for filtering
+    brands: list[str] = Field(
+        default_factory=list,
+        description="List of brand names if explicitly mentioned (e.g., ['Nike', 'Adidas'])"
+    )
+
+    # Optional category list
+    categories: list[str] = Field(
+        default_factory=list,
+        description="List of categories if mentioned (e.g., ['shoes', 'laptops'])"
+    )
+
+    # Sort preference
+    sort_by: Literal["relevance", "price_asc", "price_desc", "rating", "newest"] | None = Field(
+        default="relevance",
+        description="Sort preference: 'relevance' (default), 'price_asc' (cheapest first), 'price_desc' (expensive first), 'rating' (highest rated), 'newest'"
+    )
+
+    # Stock filter
+    in_stock_only: bool = Field(
+        default=True,
+        description="Whether to show only in-stock items. Default true unless user explicitly asks for all products"
+    )
     
-    # Product identification
-    brand: str | None = Field(..., description="The brand of the product")
-    title: str | None = Field(..., description="The title/name of the product - use only for specific product names")
-    tags: list[str] | None = Field(..., description="Array of search tags that match user intent - primary search mechanism")
+    # NEW: Product attribute filters
+    colors: list[str] = Field(
+        default_factory=list,
+        description="Product colors (e.g., ['red', 'blue', 'black'])"
+    )
     
-    # Pricing
-    price_max: float | None = Field(..., description="The maximum price of the product")
-    price_min: float | None = Field(..., description="The minimum price of the product")
+    materials: list[str] = Field(
+        default_factory=list,
+        description="Product materials (e.g., ['leather', 'cotton', 'polyester'])"
+    )
     
-    # Product attributes
-    gender: Literal["male", "female", "unisex"] | None = Field(..., description="The gender target of the product")
-    size: str | None = Field(..., description="The size of the product")
+    styles: list[str] = Field(
+        default_factory=list,
+        description="Product styles (e.g., ['casual', 'formal', 'athletic'])"
+    )
     
-    # DummyJSON specific fields
-    rating_min: float | None = Field(..., description="Minimum rating filter (1-5 stars)")
-    stock_min: int | None = Field(..., description="Minimum stock availability")
-    availability_status: Literal["In Stock", "Low Stock", "Out of Stock"] | None = Field(
-        ..., description="Product availability status"
+    patterns: list[str] = Field(
+        default_factory=list,
+        description="Product patterns (e.g., ['striped', 'plaid', 'solid'])"
+    )
+    
+    sizes: list[str] = Field(
+        default_factory=list,
+        description="Available sizes (e.g., ['M', 'L', 'XL'] or ['8', '9', '10'])"
+    )
+    
+    # NEW: Discount filter
+    min_discount: float | None = Field(
+        default=None,
+        description="Minimum discount percentage (0-100)",
+        ge=0,
+        le=100
     )
     
 
@@ -46,7 +107,7 @@ class Classifier(BaseModel):
         "product_search", "place_order", "initiate_payment", "payment_status",
         "support_query", "faq", "smalltalk", "unknown", "generate_signin_form",
         "login_with_credentials", "generate_signup_form", "signup_with_details",
-        "add_to_cart", "view_cart", "delete_from_cart", "user_profile",
+        "add_to_cart", "view_cart", "edit_cart", "delete_from_cart", "user_profile",
         "user_addresses", "add_address_form", "edit_address", "delete_address",
         "checkout", "checkout_ui_provider", "checkout_processor", "order_view"
     ] = Field(

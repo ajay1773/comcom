@@ -19,6 +19,7 @@ PASSWORD_REGEX = r"password\s*[:=]?\s*\S+"
 # --- Add a static fallback map ---
 DISFLUENCY_MAP = {
     "product_search": "Searching for the product you need...",
+    "product_comparison": "Comparing products for you...",
     "place_order": "Processing your order request...",
     "initiate_payment": "Processing your payment request...",
     "payment_status": "Processing your payment request...",
@@ -32,6 +33,7 @@ DISFLUENCY_MAP = {
     "signup_with_details": "Creating your account...",
     "add_to_cart": "Adding your product to cart...",
     "view_cart": "Retrieving your cart details...",
+    "edit_cart": "Updating your cart...",
     "delete_from_cart": "Removing your item from cart...",
     "user_profile": "Fetching your profile details...",
     "user_addresses": "Retrieving your saved addresses...",
@@ -98,6 +100,22 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             * "What's in my cart?"
             * "Let me see my cart contents"
             * "View cart"
+
+        - edit_cart: For editing or modifying existing cart items. Use when:
+          * User wants to change properties of items already in their cart (quantity, size, color)
+          * User wants to remove specific items using contextual references
+          * User wants to replace an item with another
+          * User uses phrases like "change", "update", "modify", "make it", "replace", "remove that"
+          * User refers to recent cart additions with "that", "it", "the one"
+          Examples:
+            * "Remove that shirt" (after adding a shirt)
+            * "Make it 3 instead of 2"
+            * "Change that to size large"
+            * "Make it blue"
+            * "Replace it with the red one"
+            * "Actually, change the size to XL"
+            * "Update quantity to 5"
+            * "I want 3 of those"
 
         - delete_from_cart: For deleting an item from the cart. Use when:
           * User wants to delete an item from the cart
@@ -219,6 +237,19 @@ async def classifier_node(state: GlobalState) -> GlobalState:
           * "Find automotive products"
           * "Do you have sports equipment?"
 
+        - product_comparison: For comparing multiple products side-by-side. Use when:
+          * User explicitly asks to compare products
+          * User uses phrases like "compare", "vs", "versus", "difference between"
+          * User wants to see which product is better
+          * User asks about differences or similarities between products
+          Examples:
+          * "Compare iPhone 14 vs Samsung S23"
+          * "What's the difference between Nike shoes and Adidas shoes?"
+          * "Show me MacBook Pro vs Dell XPS comparison"
+          * "Which is better: Product A or Product B?"
+          * "Compare these three laptops"
+          * "Show me differences between red shirt and blue shirt"
+
         - place_order: For purchasing/ordering SPECIFIC products. Use when:
           * User explicitly mentions ordering/buying a specific product
           * User uses phrases like "order", "buy", "purchase" with a product name
@@ -330,6 +361,7 @@ async def classifier_node(state: GlobalState) -> GlobalState:
         - If user explicitly says "add to cart" or any variation (e.g. "add this", "put in my cart", "add item to cart") → ALWAYS choose add_to_cart
         - Even if the product is mentioned, if the action is "add to cart", do not classify as product_search.
         - If user wants to view or check cart contents (e.g. "show my cart", "view cart", "what's in my cart") → ALWAYS choose view_cart
+        - If user wants to modify existing cart items (e.g. "remove that", "change to size large", "make it 3", "replace with blue") → ALWAYS choose edit_cart
         - If user wants to view their profile or account details (e.g. "show my profile", "my account", "profile details") → ALWAYS choose user_profile
         - If user wants to view their saved addresses (e.g. "show my addresses", "view addresses", "my saved addresses") → ALWAYS choose user_addresses
         - If user provides address details to save (e.g. "add my address: 123 Main St", "save address", "my address is") → ALWAYS choose add_address_form
@@ -398,6 +430,7 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             - If intent = signup_with_details → "Creating your account..."
             - If intent = add_to_cart → "Adding your product to cart..."
             - If intent = view_cart → "Retrieving your cart details..."
+            - If intent = edit_cart → "Updating your cart..."
             - If intent = user_profile → "Fetching your profile details..."
             - If intent = user_addresses → "Retrieving your saved addresses..."
             - If intent = add_address_form → "Saving your address..."
@@ -411,7 +444,7 @@ async def classifier_node(state: GlobalState) -> GlobalState:
 
         Output format:
         Return **only valid JSON** with the following fields:
-        - `intent`: one of [product_search, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, view_cart, user_profile, user_addresses, add_address_form, edit_address, delete_address, checkout, checkout_ui_provider, checkout_processor, order_view]
+        - `intent`: one of [product_search, product_comparison, place_order, initiate_payment, payment_status, support_query, faq, smalltalk, unknown, generate_signin_form, login_with_credentials, generate_signup_form, signup_with_details, add_to_cart, view_cart, edit_cart, delete_from_cart, user_profile, user_addresses, add_address_form, edit_address, delete_address, checkout, checkout_ui_provider, checkout_processor, order_view]
         - `confidence`: float between 0.0 and 1.0
         - `disfluent_message`: string
 

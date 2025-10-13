@@ -1,5 +1,5 @@
 from app.core.config import settings
-from typing import List, Any, Sequence
+from typing import List, Any, Sequence, Dict
 from pydantic import BaseModel
 import aiosqlite
 from app.models.user import UserSession
@@ -44,23 +44,27 @@ class Product(BaseModel):
     discount_percentage: float
     rating: float
     stock: int
-    tags: str  # JSON string containing tags array
+    tags: List[str]
     brand: str
     sku: str
     weight: float
-    dimensions: str  # JSON string containing width, height, depth
+    dimensions: Dict[str, float]
     warranty_information: str
     shipping_information: str
     availability_status: str
     return_policy: str
     minimum_order_quantity: int
     thumbnail: str
-    images: str  # JSON string containing images array
+    images: List[str]
     barcode: str
     qr_code: str
-    available_sizes: str  # JSON string containing available sizes
-    unit: str  # Unit of measurement (e.g., "piece", "pair", "set")
-    gender: str | None = None
+    available_sizes: List[str]
+    unit: str
+    gender: str | None
+    material: str | None
+    style: str | None
+    pattern: str | None
+    color: str | None
 
 class UserCart(BaseModel):
     id: int

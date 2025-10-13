@@ -4,6 +4,7 @@ from app.graph.workflows.order_management.types import OrderViewState
 from langchain_core.runnables import RunnableConfig
 from langchain_core.prompts import ChatPromptTemplate
 from app.services.llm import llm_service
+from app.utils.conversation_context import format_conversation_context_with_template
 
 class OrderViewParams(BaseModel):
     """Order view parameters extracted from user input."""
@@ -15,6 +16,14 @@ async def extract_view_params_node(state: OrderViewState, config: RunnableConfig
     """Extract order view parameters from user's message."""
     
     user_message = state.get("search_query", "")
+    
+    # Get conversation context for better order extraction
+    conversation_context = format_conversation_context_with_template(
+        state=dict(state),
+        template_name="order_processing",
+        limit=5,
+        fallback_message=""
+    )
     
     try:
         # Create LLM prompt to extract order view parameters
@@ -48,13 +57,15 @@ async def extract_view_params_node(state: OrderViewState, config: RunnableConfig
                 - Extract numeric order IDs as integers
                 - Extract order numbers exactly as mentioned
                 - Use null for missing information
+                - If conversation context is available, consider previous order interactions
             """),
             ("user", "{search_query}"),
+            ("user", "{conversation_context}"),
         ])
         
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
         response = cast(OrderViewParams, await llm.with_structured_output(OrderViewParams).ainvoke(
-            prompt.invoke({"search_query": user_message})
+            prompt.invoke({"search_query": user_message, "conversation_context": conversation_context})
         ))
         
         # Set the extracted parameters in state

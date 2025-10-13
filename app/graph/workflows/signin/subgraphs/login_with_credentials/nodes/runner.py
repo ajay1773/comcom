@@ -14,10 +14,11 @@ async def run_login_with_credentials(state: GlobalState, config: RunnableConfig 
         "search_query": state.get('user_message', ''),
         "suggestions": [],
         "credentials": {},
-        "user": None
+        "conversation_history":[]
     })
     
     # 2. Always update search_query with current user_message
+    sub_state["conversation_history"] = state.get("conversation_history", [])
     sub_state["search_query"] = state.get("user_message", "")
     sub_state["suggestions"] = state.get("suggestions", [])
     sub_state["thread_id"] = state.get("thread_id", "")

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class WidgetEventType(str, Enum):
     """Enumeration of all widget event types."""
     PRODUCT_SEARCH_RESULTS = "product_search_results"
+    PRODUCT_COMPARISON_RESULTS = "product_comparison_results"
     CART_DETAILS = "cart_details"
     USER_PROFILE_DETAILS = "user_profile_details"
     USER_ADDRESSES = "user_addresses"
@@ -47,6 +48,11 @@ class WidgetEventType(str, Enum):
     EDIT_ADDRESS_FAILURE = "edit_address_failure"
     USER_ADDRESSES_FETCH_FAILURE = "user_addresses_fetch_failure"
     USER_ADDRESSES_FETCH_SUCCESS = "user_addresses_fetch_success"
+    
+    # Status card events for edge cases
+    STATUS_CARD_NO_PRODUCTS_FOUND = "status_card_no_products_found"
+    STATUS_CARD_CATEGORY_MISMATCH = "status_card_category_mismatch"
+    STATUS_CARD_COMPARISON_ERROR = "status_card_comparison_error"
 
     CHECKOUT_UI_PROVIDER_DATA = "checkout_ui_provider_data"
     ORDER_VIEW_SUCCESS = "order_view_success"

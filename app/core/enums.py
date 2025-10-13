@@ -3,10 +3,10 @@
 from enum import Enum
 from typing import Literal
 
-TypeWorkflowType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart", "checkout", "checkout_ui_provider", "checkout_processor", "order_view"]
-TypeNodeName = Literal["classifier_node", "orchestrator_node", "output_handler", "error_handler", "product_search_workflow", "place_order_workflow", "initiate_payment_workflow", "payment_status_workflow", "fallback_workflow", "generate_signin_form_workflow", "login_with_credentials_workflow", "generate_signup_form_workflow", "signup_with_details_workflow", "auth_middleware_workflow", "auth_protected_product_search_workflow", "auth_protected_place_order_workflow", "extract_params", "product_lookup", "extract_product_details", "get_selected_product", "prepare_order_details", "generate_payment", "make_payment", "handle_fallback", "send_login_form", "extract_login_credentials", "login_with_credentials", "parse_token", "handle_valid_token", "handle_invalid_token", "add_to_cart_workflow", "view_cart_workflow", "handle_success", "handle_failure", "get_cart_details", "handle_view_cart_success", "handle_view_cart_fail", "extract_address_details", "save_address_details", "handle_address_save_success", "handle_address_save_failure", "auth_protected_add_address_form_workflow", "auth_protected_edit_address_workflow", "auth_protected_delete_address_workflow", "checkout_workflow", "auth_protected_checkout_workflow", "checkout_ui_provider_workflow", "auth_protected_checkout_ui_provider_workflow", "checkout_processor_workflow", "auth_protected_checkout_processor_workflow", "order_view_workflow", "auth_protected_order_view_workflow", "extract_checkout_details", "validate_cart_product", "address_selection", "payment_collection", "create_order", "checkout_success_handler", "checkout_failure_handler"]
+TypeWorkflowType = Literal["product_search", "product_comparison", "place_order", "initiate_payment", "payment_status", "support_query", "fallback", "generate_signin_form", "login_with_credentials", "generate_signup_form", "signup_with_details", "auth_middleware", "add_to_cart", "view_cart", "edit_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart", "checkout", "checkout_ui_provider", "checkout_processor", "order_view"]
+TypeNodeName = Literal["classifier_node", "orchestrator_node", "output_handler", "error_handler", "product_search_workflow", "place_order_workflow", "initiate_payment_workflow", "payment_status_workflow", "fallback_workflow", "generate_signin_form_workflow", "login_with_credentials_workflow", "generate_signup_form_workflow", "signup_with_details_workflow", "auth_middleware_workflow", "auth_protected_product_search_workflow", "auth_protected_place_order_workflow", "extract_params", "product_lookup", "extract_product_details", "get_selected_product", "prepare_order_details", "generate_payment", "make_payment", "handle_fallback", "send_login_form", "extract_login_credentials", "login_with_credentials", "parse_token", "handle_valid_token", "handle_invalid_token", "add_to_cart_workflow", "view_cart_workflow", "edit_cart_workflow", "auth_protected_edit_cart_workflow", "handle_success", "handle_failure", "get_cart_details", "handle_view_cart_success", "handle_view_cart_fail", "extract_edit_cart_details", "identify_cart_item", "apply_cart_edit", "handle_edit_success", "handle_edit_failure", "extract_address_details", "save_address_details", "handle_address_save_success", "handle_address_save_failure", "auth_protected_add_address_form_workflow", "auth_protected_edit_address_workflow", "auth_protected_delete_address_workflow", "checkout_workflow", "auth_protected_checkout_workflow", "checkout_ui_provider_workflow", "auth_protected_checkout_ui_provider_workflow", "checkout_processor_workflow", "auth_protected_checkout_processor_workflow", "order_view_workflow", "auth_protected_order_view_workflow", "extract_checkout_details", "validate_cart_product", "address_selection", "payment_collection", "create_order", "checkout_success_handler", "checkout_failure_handler"]
 TypeTemplateType = Literal["send_login_form", "login_with_credentials", "send_signup_form", "signup_with_details", "product_search_results", "order_confirmation", "order_details", "initiate_payment", "payment_form", "payment_status_details", "payment_success", "payment_failed", "error_message", "fallback_response", "auth_success", "auth_error", "send_add_address_form"]
-TypeIntentType = Literal["product_search", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart", "view_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart", "checkout", "checkout_ui_provider", "checkout_processor", "order_view", "faq", "smalltalk", "unknown"]
+TypeIntentType = Literal["product_search", "product_comparison", "place_order", "initiate_payment", "payment_status", "support_query", "generate_signin_form", "login_with_credentials", "fallback", "generate_signup_form", "signup_with_details","auth_middleware", "add_to_cart", "view_cart", "edit_cart", "user_profile", "user_addresses", "add_address_form", "edit_address", "delete_address", "delete_from_cart", "checkout", "checkout_ui_provider", "checkout_processor", "order_view", "faq", "smalltalk", "unknown"]
 TypeWorkflowStateKey = Literal["user_message", "intent", "conversation_history", "user_profile", "response", "user_id", "session_token", "is_authenticated", "auth_required", "pending_workflow", "thread_id", "current_workflow", "workflow_states", "workflow_history", "confidence", "disfluent_message", "workflow_output_text", "workflow_output_json", "workflow_error", "error_recovery_options"]
 TypeError = Literal["validation_error", "authentication_error", "network_error", "database_error", "workflow_error", "unknown_error"]
 TypeDatabaseTable = Literal["users", "products", "orders", "order_items", "payments", "sessions"]
@@ -19,6 +19,7 @@ class WorkflowType(str, Enum):
     """Enum for workflow types."""
     
     PRODUCT_SEARCH = "product_search"
+    PRODUCT_COMPARISON = "product_comparison"
     PLACE_ORDER = "place_order"
     INITIATE_PAYMENT = "initiate_payment"
     PAYMENT_STATUS = "payment_status"
@@ -31,6 +32,7 @@ class WorkflowType(str, Enum):
     AUTH_MIDDLEWARE = "auth_middleware"
     ADD_TO_CART = "add_to_cart"
     VIEW_CART = "view_cart"
+    EDIT_CART = "edit_cart"
     USER_PROFILE = "user_profile"
     USER_ADDRESSES = "user_addresses"
     ADD_ADDRESS_FORM = "add_address_form"
@@ -53,6 +55,7 @@ class NodeName(str, Enum):
     
     # Workflow nodes
     PRODUCT_SEARCH_WORKFLOW = "product_search_workflow"
+    PRODUCT_COMPARISON_WORKFLOW = "product_comparison_workflow"
     PLACE_ORDER_WORKFLOW = "place_order_workflow"
     INITIATE_PAYMENT_WORKFLOW = "initiate_payment_workflow"
     PAYMENT_STATUS_WORKFLOW = "payment_status_workflow"
@@ -64,12 +67,15 @@ class NodeName(str, Enum):
     AUTH_MIDDLEWARE_WORKFLOW = "auth_middleware_workflow"
     ADD_TO_CART_WORKFLOW = "add_to_cart_workflow"
     VIEW_CART_WORKFLOW = "view_cart_workflow"
+    EDIT_CART_WORKFLOW = "edit_cart_workflow"
     CHECKOUT_WORKFLOW = "checkout_workflow"
     # Auth-protected workflow nodes
     AUTH_PROTECTED_PRODUCT_SEARCH_WORKFLOW = "auth_protected_product_search_workflow"
+    AUTH_PROTECTED_PRODUCT_COMPARISON_WORKFLOW = "auth_protected_product_comparison_workflow"
     AUTH_PROTECTED_PLACE_ORDER_WORKFLOW = "auth_protected_place_order_workflow"
     AUTH_PROTECTED_ADD_TO_CART_WORKFLOW = "auth_protected_add_to_cart_workflow"
     AUTH_PROTECTED_VIEW_CART_WORKFLOW = "auth_protected_view_cart_workflow"
+    AUTH_PROTECTED_EDIT_CART_WORKFLOW = "auth_protected_edit_cart_workflow"
     AUTH_PROTECTED_USER_PROFILE_WORKFLOW = "auth_protected_user_profile_workflow"
     AUTH_PROTECTED_USER_ADDRESSES_WORKFLOW = "auth_protected_user_addresses_workflow"
     AUTH_PROTECTED_ADD_ADDRESS_FORM_WORKFLOW = "auth_protected_add_address_form_workflow"
@@ -77,12 +83,12 @@ class NodeName(str, Enum):
     AUTH_PROTECTED_DELETE_ADDRESS_WORKFLOW = "auth_protected_delete_address_workflow"
     AUTH_PROTECTED_DELETE_FROM_CART_WORKFLOW = "auth_protected_delete_from_cart_workflow"
     AUTH_PROTECTED_CHECKOUT_WORKFLOW = "auth_protected_checkout_workflow"
-    CHECKOUT_UI_PROVIDER_WORKFLOW = "checkout_ui_provider_workflow"
     AUTH_PROTECTED_CHECKOUT_UI_PROVIDER_WORKFLOW = "auth_protected_checkout_ui_provider_workflow"
-    CHECKOUT_PROCESSOR_WORKFLOW = "checkout_processor_workflow"
     AUTH_PROTECTED_CHECKOUT_PROCESSOR_WORKFLOW = "auth_protected_checkout_processor_workflow"
-    ORDER_VIEW_WORKFLOW = "order_view_workflow"
     AUTH_PROTECTED_ORDER_VIEW_WORKFLOW = "auth_protected_order_view_workflow"
+    CHECKOUT_UI_PROVIDER_WORKFLOW = "checkout_ui_provider_workflow"
+    CHECKOUT_PROCESSOR_WORKFLOW = "checkout_processor_workflow"
+    ORDER_VIEW_WORKFLOW = "order_view_workflow"
     # Product search nodes
     EXTRACT_PARAMS = "extract_params"
     PRODUCT_LOOKUP = "product_lookup"
@@ -129,6 +135,13 @@ class NodeName(str, Enum):
     GET_CART_DETAILS = "get_cart_details"
     HANDLE_VIEW_CART_SUCCESS = "handle_view_cart_success"
     HANDLE_VIEW_CART_FAIL = "handle_view_cart_fail"
+    
+    # Edit cart nodes
+    EXTRACT_EDIT_CART_DETAILS = "extract_edit_cart_details"
+    IDENTIFY_CART_ITEM = "identify_cart_item"
+    APPLY_CART_EDIT = "apply_cart_edit"
+    HANDLE_EDIT_SUCCESS = "handle_edit_success"
+    HANDLE_EDIT_FAILURE = "handle_edit_failure"
     
     # User profile nodes
     GET_USER_DETAILS = "get_user_details"
@@ -195,6 +208,7 @@ class IntentType(str, Enum):
     """Enum for intent types."""
     
     PRODUCT_SEARCH = "product_search"
+    PRODUCT_COMPARISON = "product_comparison"
     PLACE_ORDER = "place_order"
     INITIATE_PAYMENT = "initiate_payment"
     PAYMENT_STATUS = "payment_status"
@@ -205,6 +219,7 @@ class IntentType(str, Enum):
     SIGNUP_WITH_DETAILS = "signup_with_details"
     ADD_TO_CART = "add_to_cart"
     VIEW_CART = "view_cart"
+    EDIT_CART = "edit_cart"
     DELETE_FROM_CART = "delete_from_cart"
     USER_PROFILE = "user_profile"
     USER_ADDRESSES = "user_addresses"

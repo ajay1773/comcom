@@ -4,152 +4,286 @@ from langchain_core.prompts import ChatPromptTemplate
 from app.models.classifier import Entities
 from app.services.llm import llm_service
 from app.utils.conversation_context import format_conversation_context_with_template
+
+
 async def extract_search_parameters_node(state: ProductSearchState) -> ProductSearchState:
     """
-    LangGraph node for extracting parameters from the user query.
-    Uses workflow-specific state management with conversation context.
+    Simplified LangGraph node for extracting search parameters.
+    ONE-TIME LLM call for simple JSON extraction following FTS5 pipeline design.
     """
-    # Get user message and format conversation context using the utility
+    # Get user message and format conversation context
     user_message = state.get("search_query", "")
     conversation_context = format_conversation_context_with_template(
-        state=dict(state),  # Convert TypedDict to regular dict for type compatibility
+        state=dict(state),
         template_name="parameter_extraction",
         limit=5,
         fallback_message=""
     )
     
     extractor_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a parameter extractor for an e-commerce system. Extract parameters from user queries about products.
+        ("system", """
+            You are a parameter extractor for an e-commerce product search system.
+            Extract search parameters from user queries. Return ONLY structured data.
 
-            For product_category, use these EXACT DummyJSON categories:
-            - beauty (makeup, cosmetics)
-            - fragrances (perfumes, scents)
-            - furniture (beds, chairs, tables, sofas)
-            - groceries (food items, beverages)
-            - home-decoration (decor items, lighting, plant pots)
-            - smartphones (mobile phones)
-            - laptops (computers)
-            - tablets (tablet devices)
-            - mens-shirts (men's shirts)
-            - womens-dresses (women's dresses)
-            - womens-shoes (women's footwear)
-            - mens-shoes (men's footwear or men's shoes)
-            - womens-watches (women's watches)
-            - mens-watches (men's watches)
-            - womens-bags (women's bags, purses)
-            - womens-jewellery (women's jewelry)
-            - mens-jewellery (men's jewelry)
-            - sunglasses (eyewear)
-            - automotive (vehicles)
-            - motorcycle (motorcycles)
-            - lighting (lamps, lights)
-            - sports-accessories (sports equipment)
-            - kitchen-accessories (kitchen tools)
-            - mobile-accessories (phone accessories)
-            - skincare (skincare products)
-            - tops (clothing tops)
-            - vehicle (cars, trucks)
+            ## EXTRACTION RULES
 
-            Extract all relevant parameters including:
-            - product_category (use EXACT categories above, not simplified ones)
-            - brand
-            - title (product name/title - use this ONLY for specific product names, not general terms)
-            - tags (array of search tags that match user intent - this is the PRIMARY search mechanism)
-            - gender (male, female, unisex)
-            - price_max
-            - price_min
-            - size
-            - rating_min (if user mentions rating requirements like "4+ stars", "highly rated")
-            - stock_min (if user mentions availability like "in stock", "available")
-            - availability_status ("In Stock", "Low Stock", "Out of Stock")
+            ### 1. KEYWORDS (required)
+            Extract the search terms like the product type and brand.
+            Do not extract the price, rating, gender, material, style, pattern, color, size, discount as these are already extracted in the next steps.
 
-            IMPORTANT: Tags are the primary search mechanism. Extract relevant tags based on user query:
+            Examples:
+            - "red shoes for men" → "red shoes"
+            - "Nike running shoes under 100" → "Nike running shoes"
+            - "women's dresses" → "dresses"
+            - "iPhone 14 Pro" → "iPhone 14 Pro"
+            - "laptops" → "laptops"
+            - "potato" → "vegetables"
+            - "tomato" → "vegetables"
+            - "onion" → "vegetables"
+            - "milk, curd, butter" → "groceries, milk, curd, butter"
+            - "nail polish" → "beauty,nail polish"
+            - "mascara" → "beauty,mascara"
+            - "earings" → "womens-jewellery,earings"
+            - "lipstick" → "beauty,lipstick"
+            - "Blue Frock" → "tops,Blue Frock"
+            - "Black Frock" → "tops,Black Frock"
+            - "Girl Summer Dress" → "tops,Girl Summer Dress"
+            - "Plant Pot" → "home-decoration,plant pot"
+            - "photo frame" → "home-decoration,photo frame"
+            - "gas stove" → "kitchen-accessories,gas stove"
+            - "Chopping Board" → "kitchen-accessories,Chopping Board"
+            - "Fine Mesh Strainer" → "kitchen-accessories,Fine Mesh Strainer"
+            - "Knife" → "kitchen-accessories,Knife"
+            - "Sun Glasses" → "sunglasses,Sun Glasses"
+            - "Mobile Phone Charger" → "mobile-accessories,Mobile Phone Charger"
+            - "Earphones" → "mobile-accessories,Earphones"
+            - "Headphones" → "mobile-accessories,Headphones"
+            - "Selfie Lamp" → "mobile-accessories,Selfie Lamp"
+            - "Dodge Hornet GT Plus" → "automotive,vehicle"
+            - "shirts, t-shirts" → "mens-shirts,shirts, t-shirts"
 
-            Tag mapping examples (user query → tags to extract):
-            - "perfumes" → ["fragrances", "perfumes"]
-            - "mascara" → ["beauty", "mascara"]
-            - "eyeshadow" → ["beauty", "eyeshadow"]
-            - "iPhone" → ["smartphones", "apple"]
-            - "Samsung phone" → ["smartphones", "samsung galaxy"]
-            - "laptop" → ["laptops"]
-            - "furniture" → ["furniture"]
-            - "bed" → ["furniture", "beds"]
-            - "chair" → ["furniture", "chairs"]
-            - "table" → ["furniture", "tables", "bedside tables"]
-            - "sofa" → ["furniture", "sofas"]
-            - "kitchen tools" → ["kitchen accessories"]
-            - "dress" → ["womens-dresses", "dresses"]
-            - "men's shirt" → ["mens-shirts", "shirts"]
-            - "women's shoes" → ["womens-shoes", "shoes"]
-            - "men's shoes" → ["mens-shoes", "shoes"]
-            - "sports equipment" → ["sports-accessories"]
-            - "car" → ["automotive", "vehicles", "sedans"]
-            - "motorcycle" → ["motorcycle"]
-            - "home decor" → ["home-decoration"]
-            - "phone accessories" → ["mobile-accessories", "phone accessories"]
-            - "tablet" → ["tablets"]
-            - "skincare" → ["skincare"]
-            - "lighting" → ["lighting"]
-            - "sunglasses" → ["sunglasses"]
-            - "jewelry" → ["womens-jewellery"]
-            - "watch" → ["mens-watches", "womens-watches"]
-            - "bag" → ["womens-bags"]
-            - "food" → ["groceries"]
-            - "vegetables" → ["groceries", "vegetables"]
+            ### 1.1. Rules for mobile phone search (optional)
+            For general mobile phone search, extract the brand if mentioned if not then add "smartphones" to the keywords.
+            - "mobile phone" → keywords: ["smartphones"]
+            - "mobile phones" → keywords: ["smartphones"]
+            - "smartphone" → keywords: ["smartphones"]
+            - "smartphones" → keywords: ["smartphones"]
 
-            Category mapping examples:
-            - "laptop", "computer" → laptops
-            - "smartphone", "phone", "mobile" → smartphones
-            - "tablet", "ipad" → tablets
-            - "mascara", "lipstick", "makeup" → beauty
-            - "perfume", "fragrance", "cologne" → fragrances
-            - "skincare", "moisturizer", "cleanser" → skincare
-            - "bed", "chair", "table", "sofa" → furniture
-            - "home decor", "decoration" → home-decoration
-            - "kitchen tools", "kitchen utensils" → kitchen-accessories
-            - "lamp", "light" → lighting
-            - "men's shirt", "shirt for men" → mens-shirts
-            - "women's dress", "dress for women" → womens-dresses
-            - "women's shoes", "ladies shoes" → womens-shoes
-            - "men's shoes", "men's footwear" → mens-shoes
-            - "women's watch", "ladies watch" → womens-watches
-            - "men's watch", "men's timepiece" → mens-watches
-            - "women's bag", "purse", "handbag" → womens-bags
-            - "women's jewelry", "ladies jewelry" → womens-jewellery
-            - "sunglasses", "shades" → sunglasses
-            - "car", "automobile" → automotive or vehicle
-            - "motorcycle", "bike" → motorcycle
-            - "sports equipment", "fitness gear" → sports-accessories
-            - "phone accessories", "mobile accessories" → mobile-accessories
-            - "clothing tops", "shirts", "blouses" → tops
-            - "food", "snacks", "beverages" → groceries
+            ### 2. PRICE FILTERS (optional)
+            Extract price constraints if mentioned.
 
-            For brand and title always capitalize the first letter of the word.
-            Example: "title": "Summer Breeze T-shirt", "brand": "Nike"
+            Patterns:
+            - "under $500", "below $500" → price_max: 500
+            - "above $100", "over $100" → price_min: 100
+            - "between $50 and $200" → price_min: 50, price_max: 200
+            - "around $300" → price_min: 250, price_max: 350
 
-            Gender extraction:
-            - "men's", "for men", "male" → gender: "male"
-            - "women's", "for women", "female", "ladies" → gender: "female"
-            - If not specified or unisex → gender: "unisex"
+            ### 3. RATING (optional)
+            Extract minimum rating if mentioned.
 
-            Rating extraction:
-            - "highly rated", "good reviews" → rating_min: 4.0
-            - "5 star", "excellent" → rating_min: 5.0
-            - "4+ stars" → rating_min: 4.0
+            Patterns:
+            - "4+ stars", "highly rated" → rating_min: 4.0
+            - "5 stars", "top rated", "best rated" → rating_min: 4.5
+            - "good reviews" → rating_min: 3.5
 
-            Stock/Availability extraction:
-            - "in stock", "available" → availability_status: "In Stock"
-            - "low stock" → availability_status: "Low Stock"
-            - "out of stock" → availability_status: "Out of Stock"
+            ### 4. GENDER (optional)
+            Determine target gender: "M" for men, "F" for women, null if unspecified.
 
-            CRITICAL: 
-            - Use 'title' only for specific product names (e.g., "iPhone 13 Pro", "Samsung Galaxy S10")
-            - Use 'tags' for general product types (e.g., "perfumes", "mascara", "laptops", "tshirts")
-            - Always extract relevant tags that match the user's search intent
-            - Tags should be lowercase and match the patterns found in the product database
-            - Make sure to fix any typos in the tags for example "tshirts" should be "t-shirts"
+            Patterns:
+            - "men's", "for men", "male" → gender: "M"
+            - "women's", "for women", "ladies", "female" → gender: "F"
+            - Not mentioned → gender: null
 
-            If a parameter is not mentioned, set it to null."""),
+            ### 5. BRANDS (optional)
+            Extract brand names when explicitly mentioned as a list.
+
+            Examples:
+            - "Nike shoes" → brands: ["Nike"]
+            - "Apple or Samsung phones" → brands: ["Apple", "Samsung"]
+            - "shoes" → brands: []
+
+            ### 6. CATEGORIES (optional)
+            Extract general categories if mentioned as a list.
+
+            Examples:
+            - "shoes" → categories: ["shoes"]
+            - "kitchen utensils" → categories: ["kitchen-accessories"]
+            - "laptops and tablets" → categories: ["laptops", "tablets"]
+            - "iPhone 14" → categories: []
+            - "potato, tomato" → categories: ["groceries"]
+            - "nail polish, mascara, lipstick" → categories: ["beauty"]
+            - "milk, curd, butter" → categories: ["groceries"]
+            - "plant pot, photo frame" → categories: ["home-decoration"]
+            - "gas stove, chopping board, fine mesh strainer, knife" → categories: ["kitchen-accessories"]
+            - "sunglasses, party glasses" → categories: ["sunglasses"]
+            - "blue frock, black frock, girl summer dress" → categories: ["tops"]
+            - "mobile phone, mobile phones, smartphone, smartphones" → categories: ["smartphones"]
+            - "charger,earphones,headphones" → categories: ["mobile-accessories"]
+            - "selfie lamp" → categories: ["mobile-accessories"]
+            - "earings" → categories: ["womens-jewellery"]
+            - "Dodge Hornet GT Plus" → categories: ["vehicle"]
+            - "Charger SXT RWD" → categories: ["vehicle"]
+            - "shirts, t-shirts" → categories: ["mens-shirts"]
+            - "cricket bat, cricket ball, baseball bat, baseball ball" → categories: ["sports-accessories"]
+            
+            ### 7. SORT PREFERENCE (optional)
+            Determine how to sort results.
+
+            Patterns:
+            - "cheapest", "lowest price" → sort_by: "price_asc"
+            - "most expensive", "highest price" → sort_by: "price_desc"
+            - "best rated", "top rated" → sort_by: "rating"
+            - "newest", "latest" → sort_by: "newest"
+            - Not mentioned → sort_by: "relevance"
+
+            ### 8. STOCK FILTER (optional)
+            Determine if user wants only in-stock items.
+
+            Default: true (show only in-stock)
+            Set to false only if user says: "include out of stock", "show all", "even if out of stock"
+
+            ### 9. COLOR FILTERS (optional)
+            Extract color preferences if mentioned as a list.
+
+            Examples:
+            - "red shoes" → colors: ["red"]
+            - "black or blue shirts" → colors: ["black", "blue"]
+            - "white and silver watches" → colors: ["white", "silver"]
+            - "green dress" → colors: ["green"]
+            - "blue shirt" → colors: ["blue"]
+            - Not mentioned → colors: []
+
+            ### 10. MATERIAL FILTERS (optional)
+            Extract material preferences if mentioned as a list.
+
+            Examples:
+            - "leather jacket" → materials: ["leather"]
+            - "cotton or polyester shirts" → materials: ["cotton", "polyester"]
+            - "wooden furniture" → materials: ["wood"]
+            - "metal frame" → materials: ["metal"]
+            - Not mentioned → materials: []
+
+            ### 11. STYLE FILTERS (optional)
+            Extract style preferences if mentioned as a list.
+
+            Examples:
+            - "casual shoes" → styles: ["casual"]
+            - "formal or athletic wear" → styles: ["formal", "athletic"]
+            - "modern furniture" → styles: ["modern"]
+            - "vintage watch" → styles: ["vintage"]
+            - Not mentioned → styles: []
+
+            ### 12. PATTERN FILTERS (optional)
+            Extract pattern preferences if mentioned as a list.
+
+            Examples:
+            - "striped shirt" → patterns: ["striped"]
+            - "plaid or checkered" → patterns: ["plaid", "checkered"]
+            - "solid color shirt" → patterns: ["solid"]
+            - "floral dress" → patterns: ["floral"]
+            - Not mentioned → patterns: []
+
+            ### 13. SIZE FILTERS (optional)
+            Extract size requirements if mentioned as a list.
+
+            Examples:
+            - "size 10 shoes" → sizes: ["10"]
+            - "XL or XXL shirt" → sizes: ["XL", "XXL"]
+            - "medium dress" → sizes: ["M", "Medium"]
+            - "large" → sizes: ["L", "Large"]
+            - Not mentioned → sizes: []
+
+            ### 14. DISCOUNT FILTER (optional)
+            Extract minimum discount if mentioned.
+
+            Examples:
+            - "products with 20% off" → min_discount: 20
+            - "50% discount or more" → min_discount: 50
+            - "on sale" → min_discount: 5
+            - "clearance items" → min_discount: 30
+            - Not mentioned → min_discount: null
+
+            ## EXAMPLES
+
+            Query: "red shoes for men"
+            Output: {{
+            "keywords": "red shoes",
+            "gender": "M",
+            "in_stock_only": true
+            }}
+
+            Query: "Nike running shoes under 100"
+            Output: {{
+            "keywords": "Nike running shoes",
+            "price_max": 100,
+            "brands": ["Nike"],
+            "in_stock_only": true
+            }}
+
+            Query: "women's dresses"
+            Output: {{
+            "keywords": "dresses",
+            "gender": "F",
+            "in_stock_only": true
+            }}
+
+            Query: "laptops under 1000 with good ratings"
+            Output: {{
+            "keywords": "laptops",
+            "price_max": 1000,
+            "rating_min": 3.5,
+            "in_stock_only": true
+            }}
+
+            Query: "cheapest iPhone"
+            Output: {{
+            "keywords": "iPhone",
+            "brands": ["Apple"],
+            "sort_by": "price_asc",
+            "in_stock_only": true
+            }}
+
+            Query: "red leather casual shoes size 10"
+            Output: {{
+            "keywords": "shoes",
+            "colors": ["red"],
+            "materials": ["leather"],
+            "styles": ["casual"],
+            "sizes": ["10"],
+            "in_stock_only": true
+            }}
+
+            Query: "cotton or polyester striped shirts XL with 20% discount"
+            Output: {{
+            "keywords": "shirts",
+            "materials": ["cotton", "polyester"],
+            "patterns": ["striped"],
+            "sizes": ["XL"],
+            "min_discount": 20,
+            "in_stock_only": true
+            }}
+
+            Query: "black formal shoes under $100"
+            Output: {{
+            "keywords": "shoes",
+            "colors": ["black"],
+            "styles": ["formal"],
+            "price_max": 100,
+            "in_stock_only": true
+            }}
+
+            Query: "items on sale"
+            Output: {{
+            "keywords": "",
+            "min_discount": 5,
+            "in_stock_only": true
+            }}
+
+            ## IMPORTANT
+            - Keep keywords concise and search-optimized
+            - Only set fields if explicitly mentioned
+            - Consider conversation context for ambiguous queries
+            """),
         ("user", "{query}"),
         ("user", "{conversation_context}")
     ])
@@ -160,7 +294,6 @@ async def extract_search_parameters_node(state: ProductSearchState) -> ProductSe
 
     # Update workflow state with extracted parameters
     entities_dict = response.model_dump()
-    
     
     state["search_query"] = user_message
     state["search_parameters"] = entities_dict

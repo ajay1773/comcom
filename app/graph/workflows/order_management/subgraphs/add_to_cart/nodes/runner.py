@@ -5,8 +5,6 @@ from app.models.chat import GlobalState
 from langchain_core.runnables import RunnableConfig
 from app.graph.workflows.order_management.types import AddToCartState
 from app.graph.workflows.order_management.subgraphs.add_to_cart.graph import AddToCartGraph
-from app.services.widget_events import WidgetEventType, widget_event_emitter
-from app.utils.extract import extract_subgraph_suggestions
 
 
 
@@ -19,6 +17,7 @@ async def run_add_to_cart(state: GlobalState, config: RunnableConfig | None = No
     })
 
     # 2. Always update search_query with current user_message
+    sub_state["conversation_history"] = state.get("conversation_history", [])
     sub_state["search_query"] = state.get("user_message", "")
     sub_state["suggestions"] = state.get("suggestions", [])
     sub_state["user_id"] = state.get("user_id", None)
