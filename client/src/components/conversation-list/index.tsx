@@ -248,7 +248,7 @@ const ConversationList: React.FC<ConversationListProps> = ({ className }) => {
 
   const handleConversationSelect = async (conversationId: number) => {
     // Use React Router navigation instead of direct store call
-    navigate(`/chat/${conversationId}`);
+    navigate(`/chat/c/${conversationId}`);
   };
 
   if (conversationsLoading) {

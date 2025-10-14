@@ -90,7 +90,7 @@ const Sidebar = () => {
   const handleSelectConversation = async (conversationId: number) => {
     try {
       // Use React Router navigation instead of direct store call
-      navigate(`/chat/${conversationId}`);
+      navigate(`/chat/c/${conversationId}`);
       setIsSearchOpen(false);
     } catch (error) {
       console.error("Failed to switch conversation:", error);

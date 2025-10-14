@@ -231,8 +231,14 @@ class ChatHistoryState:
                     # Token might be invalid, continue without user
                     pass
             
-            # Get or create conversation
-            await conversation_service.get_or_create_conversation(thread_id, user_id)
+            # Only create conversation for authenticated users
+            # For logged-out users, skip conversation persistence
+            if user_id:
+                # Get or create conversation for authenticated users only
+                await conversation_service.get_or_create_conversation(thread_id, user_id)
+                print(f"✅ Conversation ensured for authenticated user {user_id}")
+            else:
+                print(f"⏭️ Skipping conversation persistence for unauthenticated user")
         except Exception as e:
             print(f"⚠️ Failed to ensure conversation exists: {e}")
             # Don't fail the entire flow if conversation management fails
@@ -402,9 +408,20 @@ class ChatHistoryState:
                 user_profile=base_state["user_profile"],
             )
 
-    async def update_conversation_after_processing(self, thread_id: str) -> None:
+    async def update_conversation_after_processing(self, thread_id: str, token: str = "") -> None:
         """Update conversation metadata after processing a message."""
-        await self._update_conversation_activity(thread_id)
+        # Only update conversation activity for authenticated users
+        if token:
+            try:
+                user = await auth_service.get_user_from_token(token)
+                if user:
+                    await self._update_conversation_activity(thread_id)
+                else:
+                    print(f"⏭️ Skipping conversation activity update - no authenticated user")
+            except Exception:
+                print(f"⏭️ Skipping conversation activity update - invalid token")
+        else:
+            print(f"⏭️ Skipping conversation activity update - no token provided")
 
 
 def get_conversation_context_for_workflow(state, limit: int = 10) -> str:

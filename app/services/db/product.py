@@ -398,6 +398,44 @@ class ProductService:
         
         return products
 
+    def _sanitize_fts5_query(self, query: str) -> str:
+        """
+        Sanitize user input for FTS5 MATCH queries.
+        Removes/escapes special FTS5 characters that could cause syntax errors.
+        
+        FTS5 special characters: " * ( ) AND OR NOT
+        Problem characters: & @ # $ % ^ ! ~ ` = + < > [ ] { } | backslash ; : , ?
+        
+        Args:
+            query: Raw user search query
+            
+        Returns:
+            Sanitized query safe for FTS5
+        """
+        import re
+        
+        if not query:
+            return ""
+        
+        # Remove or replace problematic characters
+        # Keep: letters, numbers, spaces, hyphens, apostrophes
+        # Remove: &, @, #, $, %, ^, !, ~, `, =, +, <, >, [, ], {, }, |, \, ;, :, comma
+        sanitized = re.sub(r'[&@#$%^!~`=+<>\[\]{}|\\;:,?]', ' ', query)
+        
+        # Replace multiple spaces with single space
+        sanitized = re.sub(r'\s+', ' ', sanitized)
+        
+        # Trim whitespace
+        sanitized = sanitized.strip()
+        
+        # If query is empty after sanitization, return original word tokens
+        if not sanitized:
+            # Extract just alphanumeric words from original query
+            words = re.findall(r'\w+', query)
+            sanitized = ' '.join(words)
+        
+        return sanitized
+
     async def search_products_fts(self, search_params: Dict[str, Any], limit: int = 20) -> List[Product]:
         """
         FTS5-based product search with filtering and sorting.
@@ -425,6 +463,9 @@ class ProductService:
         if not keywords or keywords.strip() == "":
             return []
         
+        # Sanitize keywords for FTS5
+        keywords = self._sanitize_fts5_query(keywords)
+        
         # Build FTS5 query with JOIN to products table
         query = """
         SELECT
@@ -435,7 +476,7 @@ class ProductService:
         WHERE products_fts MATCH ?
         """
         
-        query_params = [keywords]
+        query_params: List[Any] = [keywords]
         filters = []
         
         # Apply gender filter (include unisex 'U')

@@ -116,8 +116,8 @@ class StreamService:
                 # No need to stream the complete text again
                 pass
         
-        # Update conversation activity after processing is complete
-        await chat_history_state.update_conversation_after_processing(thread_id)
+        # Update conversation activity after processing is complete (only for authenticated users)
+        await chat_history_state.update_conversation_after_processing(thread_id, token)
 
 
     def _make_json_serializable(self, obj):

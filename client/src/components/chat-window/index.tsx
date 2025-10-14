@@ -128,7 +128,11 @@ const ChatWindow = () => {
     currentStreamingMessageId,
     currentConversation,
     favoriteConversation,
+    isLoggedIn,
   } = useChatStore();
+
+  // Check if user is logged in to adjust layout
+  const loggedIn = isLoggedIn();
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
@@ -298,8 +302,16 @@ const ChatWindow = () => {
   };
 
   return (
-    <div className="w-4/5 h-full flex bg-transparent">
-      <div className="flex flex-col w-3/5 h-full bg-neutral-600/10 rounded-l-2xl border-r border-r-neutral-400/10">
+    <div
+      className={`${loggedIn ? "w-4/5" : "w-full"} h-full flex bg-transparent`}
+    >
+      <div
+        className={`flex flex-col ${
+          loggedIn ? "w-3/5" : "w-3/5"
+        } h-full bg-neutral-600/10 ${
+          loggedIn ? "rounded-l-2xl" : "rounded-l-2xl"
+        } border-r border-r-neutral-400/10`}
+      >
         <div className="flex justify-between w-full px-8 border-b border-b-neutral-400/10 h-[68px]  items-center">
           <h2 className="text-white text-2xl font-semibold">
             {currentConversation?.title || "New Chat"}
@@ -395,7 +407,11 @@ const ChatWindow = () => {
         </div>
       </div>
 
-      <div className="flex flex-col w-2/5 h-full bg-neutral-600/10 rounded-r-2xl">
+      <div
+        className={`flex flex-col w-2/5 h-full bg-neutral-600/10 ${
+          loggedIn ? "rounded-r-2xl" : "rounded-r-2xl"
+        }`}
+      >
         <div className="flex items-center justify-between gap-10 border-b border-b-neutral-400/10 h-[68px]">
           <Button variant="ghost" size="icon" className="size-8 ml-8">
             <LuSquareArrowOutUpRight className="size-[20px]" />

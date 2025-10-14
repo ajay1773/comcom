@@ -108,6 +108,9 @@ interface ChatState {
   getCompletedToolMessages: () => Message[];
   getToolMessages: () => Message[];
   getChatMessages: () => Message[];
+
+  // Auth helper
+  isLoggedIn: () => boolean;
 }
 
 const initialState = {
@@ -138,6 +141,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     localStorage.removeItem("user_details");
     localStorage.removeItem("jwt_token");
     set({ userDetails: null });
+
+    // Reset chat state on logout
+    set({
+      messages: [],
+      currentConversation: null,
+      conversations: [],
+      threadId: null,
+    });
   },
   setUserDetails: (details) => {
     localStorage.setItem("user_details", details);
@@ -217,6 +228,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     };
 
+    // Check if user is logged in using the helper
+    const isLoggedIn = store.isLoggedIn();
+
+    // Track if this is the first message in conversation (for logged-in users)
+    const isFirstMessage =
+      isLoggedIn && !store.currentConversation && store.messages.length === 0;
+
     // Add user message
     const userMessage = {
       id: generateMessageId(),
@@ -249,6 +267,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
     try {
       const token = localStorage.getItem("jwt_token") || "";
+
+      // Always send thread_id for LangGraph checkpointer (needed for context)
+      // Backend will decide whether to persist to conversations table based on auth
       const response = await fetch(`${apiBaseUrl}/api/chat/stream`, {
         method: "POST",
         headers: {
@@ -282,6 +303,64 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             store.finishStreaming(assistantMessageId);
             store.setLoading(false);
             store.setToolStatus(null);
+
+            // For logged-in users: if this was the first message, fetch conversation and update URL
+            if (isFirstMessage && isLoggedIn && store.threadId) {
+              try {
+                // Fetch the conversation by thread_id to get the conversation ID
+                const token = localStorage.getItem("jwt_token") || "";
+                const headers: HeadersInit = {
+                  "Content-Type": "application/json",
+                };
+                if (token) {
+                  headers["Authorization"] = `Bearer ${token}`;
+                }
+
+                // Get all conversations and find the one with matching thread_id
+                const conversationsResponse = await fetch(
+                  `${apiBaseUrl}/api/conversations`,
+                  {
+                    method: "GET",
+                    headers,
+                  }
+                );
+
+                if (conversationsResponse.ok) {
+                  const conversationsData = await conversationsResponse.json();
+                  const newConversation = conversationsData.conversations?.find(
+                    (conv: Conversation) => conv.thread_id === store.threadId
+                  );
+
+                  if (newConversation) {
+                    // Update current conversation
+                    set({ currentConversation: newConversation });
+
+                    // Update URL to include conversation ID
+                    if (typeof window !== "undefined") {
+                      window.history.pushState(
+                        {},
+                        "",
+                        `/chat/c/${newConversation.id}`
+                      );
+                    }
+
+                    // Refresh conversation list to show the new conversation
+                    await store.loadConversations(apiBaseUrl);
+
+                    console.log(
+                      `✅ Created new conversation with ID: ${newConversation.id}`
+                    );
+                  }
+                }
+              } catch (error) {
+                console.error(
+                  "Failed to fetch conversation after creation:",
+                  error
+                );
+                // Don't fail the entire flow, just log the error
+              }
+            }
+
             return;
           }
 
@@ -671,7 +750,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
         // Update URL
         if (typeof window !== "undefined" && conversation.id) {
-          window.history.pushState({}, "", `/chat/${conversation.id}`);
+          window.history.pushState({}, "", `/chat/c/${conversation.id}`);
         }
       }
 
@@ -709,7 +788,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
         // Update URL
         if (typeof window !== "undefined") {
-          window.history.pushState({}, "", `/chat/${conversationId}`);
+          window.history.pushState({}, "", `/chat/c/${conversationId}`);
         }
 
         console.log(`🔄 Switched to conversation ID: ${conversationId}`);
@@ -1044,6 +1123,70 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         msg.role === "tool" &&
         (msg.toolStatus === "completed" || msg.toolStatus === "failed")
     ),
+
+  // Auth helper - checks both JWT token and user details for reliability
+  isLoggedIn: () => {
+    const token = localStorage.getItem("jwt_token");
+    const userDetails = get().userDetails;
+    // User is logged in if both token exists AND userDetails exists
+    return !!(token && userDetails);
+  },
 }));
+
+// Sync function to check localStorage and update store if out of sync
+const syncAuthState = () => {
+  const store = useChatStore.getState();
+  const token = localStorage.getItem("jwt_token");
+  const userDetailsStr = localStorage.getItem("user_details");
+
+  // If no token but store has userDetails, logout
+  if (!token && store.userDetails) {
+    console.log("🔓 JWT token missing - logging out");
+    store.logout();
+    return;
+  }
+
+  // If no userDetails but store has them, logout
+  if (!userDetailsStr && store.userDetails) {
+    console.log("🔓 User details missing - logging out");
+    store.logout();
+    return;
+  }
+
+  // If localStorage has userDetails but store doesn't, login
+  if (userDetailsStr && !store.userDetails) {
+    console.log("🔐 User details found - syncing login state");
+    try {
+      store.setUserDetails(userDetailsStr);
+    } catch (error) {
+      console.error("Failed to sync user details:", error);
+    }
+  }
+};
+
+// Listen for localStorage changes from OTHER tabs
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    // Only handle auth-related keys
+    if (event.key === "jwt_token" || event.key === "user_details") {
+      console.log(`🔄 Storage changed in another tab: ${event.key}`);
+      syncAuthState();
+    }
+  });
+
+  // Check localStorage when tab becomes visible (handles same-tab DevTools changes)
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      console.log("👁️ Tab visible - checking auth state");
+      syncAuthState();
+    }
+  });
+
+  // Also check on window focus (backup for visibility change)
+  window.addEventListener("focus", () => {
+    console.log("🎯 Window focused - checking auth state");
+    syncAuthState();
+  });
+}
 
 // Export the store hook for easy access

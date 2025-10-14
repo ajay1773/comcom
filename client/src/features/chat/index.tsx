@@ -5,57 +5,63 @@ import ChatWindow from "../../components/chat-window";
 import { useChatStore } from "../../store/chat-store";
 
 const Chat = () => {
-  const { conversationId } = useParams<{ conversationId?: string }>();
-  const { loadConversationById, createNewConversation, currentConversation } =
-    useChatStore();
+  const { chatId } = useParams<{ chatId?: string }>();
+  const {
+    loadConversationById,
+    resetChat,
+    isLoggedIn: checkIsLoggedIn,
+  } = useChatStore();
 
-  // Track the last processed conversation ID to prevent infinite loops
+  // Track the last processed chat ID to prevent infinite loops
   const lastProcessedId = useRef<string | undefined>(undefined);
 
+  // Check if user is logged in using store helper
+  const isLoggedIn = checkIsLoggedIn();
+
   useEffect(() => {
-    const handleConversationFromUrl = async () => {
-      // Prevent processing the same conversation ID multiple times
-      if (lastProcessedId.current === conversationId) {
+    const handleChatFromUrl = async () => {
+      // Prevent processing the same chat ID multiple times
+      if (lastProcessedId.current === chatId) {
         return;
       }
 
-      lastProcessedId.current = conversationId;
+      lastProcessedId.current = chatId;
 
-      if (conversationId && conversationId !== "new") {
-        // Load specific conversation from URL
-        const id = parseInt(conversationId, 10);
+      // For logged OUT users: maintain context within session, just don't show conversations
+      if (!isLoggedIn) {
+        // Don't reset chat - let them keep context within the session
+        // Context is cleared only on page reload (which resets the store)
+        return;
+      }
+
+      // For logged IN users:
+      if (chatId) {
+        // Load specific conversation from URL (/chat/c/:chatId)
+        const id = parseInt(chatId, 10);
         if (!isNaN(id)) {
-          // Only load if it's not already the current conversation
-          if (currentConversation?.id !== id) {
-            try {
-              await loadConversationById(id);
-            } catch (error) {
-              console.error("Failed to load conversation from URL:", error);
-              // Reset the ref so we can try again if needed
-              lastProcessedId.current = undefined;
-            }
-          }
-        }
-      } else if (!conversationId || conversationId === "new") {
-        // Create new conversation if no ID or "new" in URL
-        if (!currentConversation) {
           try {
-            await createNewConversation();
+            await loadConversationById(id);
           } catch (error) {
-            console.error("Failed to create new conversation:", error);
+            console.error("Failed to load conversation from URL:", error);
             // Reset the ref so we can try again if needed
             lastProcessedId.current = undefined;
+            // Reset chat on error
+            resetChat();
           }
         }
+      } else {
+        // No chatId in URL (/chat) - show empty window
+        resetChat();
       }
     };
 
-    handleConversationFromUrl();
-  }, [conversationId]); // Only depend on conversationId, not the functions or currentConversation
+    handleChatFromUrl();
+  }, [chatId, isLoggedIn]); // Depend on chatId and login status
 
   return (
     <div className="flex w-full h-full">
-      <Sidebar />
+      {/* Only show sidebar for logged-in users */}
+      {isLoggedIn && <Sidebar />}
       <ChatWindow />
     </div>
   );
