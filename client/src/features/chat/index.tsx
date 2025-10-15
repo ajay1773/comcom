@@ -56,7 +56,7 @@ const Chat = () => {
     };
 
     handleChatFromUrl();
-  }, [chatId, isLoggedIn]); // Depend on chatId and login status
+  }, [chatId, isLoggedIn, loadConversationById, resetChat]); // Depend on chatId and login status
 
   return (
     <div className="flex w-full h-full">
