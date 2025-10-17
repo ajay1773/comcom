@@ -19,6 +19,7 @@ PASSWORD_REGEX = r"password\s*[:=]?\s*\S+"
 # --- Add a static fallback map ---
 DISFLUENCY_MAP = {
     "product_search": "Searching for the product you need...",
+    "product_bundle_search": "Finding the perfect bundle for your needs...",
     "product_comparison": "Comparing products for you...",
     "place_order": "Processing your order request...",
     "initiate_payment": "Processing your payment request...",
@@ -223,7 +224,20 @@ async def classifier_node(state: GlobalState) -> GlobalState:
             * "What's the status of my last order?"
             * "Show me all my past orders"
 
-        - product_search: ONLY for when the user is **browsing, discovering, or asking about product availability/categories**.
+        - product_bundle_search: For when the user needs **multiple related products for an activity/use case**.
+        Use when user mentions an activity, hobby, sport, or scenario that requires multiple items.
+        Keywords: "equipment for", "what do I need for", "starter kit", "bundle", "everything I need", "play [sport]", "start [activity]"
+        Examples:
+          * "I want to play cricket, what equipment do I need?"
+          * "Show me everything I need for camping"
+          * "I want to start a home gym"
+          * "What should I buy for photography?"
+          * "I'm going camping next week, what should I get?"
+          * "Setup a gaming station"
+          * "I want to learn baking, what tools do I need?"
+        
+        - product_search: ONLY for when the user is **browsing, discovering, or asking about specific products**.
+        Use for single product or product category searches.
         Examples:
           * "Show me blue sweaters for men"
           * "Find blue shirts"

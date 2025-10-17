@@ -104,12 +104,12 @@ class Classifier(BaseModel):
     """Classifier model for intent classification and entity extraction."""
 
     intent: Literal[
-        "product_search", "place_order", "initiate_payment", "payment_status",
+        "product_search", "product_bundle_search", "place_order", "initiate_payment", "payment_status",
         "support_query", "faq", "smalltalk", "unknown", "generate_signin_form",
         "login_with_credentials", "generate_signup_form", "signup_with_details",
         "add_to_cart", "view_cart", "edit_cart", "delete_from_cart", "user_profile",
         "user_addresses", "add_address_form", "edit_address", "delete_address",
-        "checkout", "checkout_ui_provider", "checkout_processor", "order_view"
+        "checkout", "checkout_ui_provider", "checkout_processor", "order_view", "product_comparison"
     ] = Field(
         ..., description="The intent of the user query"
     )

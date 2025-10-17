@@ -22,6 +22,7 @@ def map_intent_to_workflow(intent: str, confidence: float) -> str:
     # Core ecommerce workflows
     ecommerce_workflows = {
         "product_search": "product_search",
+        "product_bundle_search": "product_bundle_search",
         "product_comparison": "product_comparison",
         "place_order": "place_order",
         "initiate_payment": "initiate_payment",

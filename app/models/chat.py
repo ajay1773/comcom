@@ -10,6 +10,7 @@ from app.graph.workflows.auth_middleware.types import AuthMiddlewareState
 from app.graph.workflows.order_management.types import AddToCartState, CheckoutState, DeleteFromCartState, EditCartState, ViewCartState
 from app.graph.workflows.user_management.types import UserAddressesState, EditAddressState, DeleteAddressState, UserProfileState
 from app.graph.workflows.product_comparison.types import ProductComparisonState
+from app.graph.workflows.product_bundle_search.types import ProductBundleSearchState
 
 
 
@@ -75,6 +76,7 @@ class GlobalState(TypedDict):
     checkout: CheckoutState | None
     product_comparison: ProductComparisonState | None
     edit_cart: EditCartState | None
+    product_bundle_search: ProductBundleSearchState | None
 # ChatState removed - not used in the codebase
 
 

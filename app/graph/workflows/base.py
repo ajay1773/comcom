@@ -12,6 +12,7 @@ from app.graph.workflows.signin.subgraphs.generate_signin_form.nodes.runner impo
 from app.core.enums import WorkflowType, NodeName, WorkflowStateKey
 from app.graph.workflows.product_search.nodes.runner import run_product_search
 from app.graph.workflows.product_comparison.nodes.runner import run_product_comparison
+from app.graph.workflows.product_bundle_search.nodes.runner import run_product_bundle_search
 import aiosqlite
 
 from app.graph.workflows.signup.subgraphs.generate_signup_form.nodes.runner import run_generate_signup_form
@@ -209,6 +210,7 @@ async def create_base_graph():
     # Add compiled subgraphs as nodes
     # Regular workflows (no auth required)
     graph.add_node(NodeName.PRODUCT_SEARCH_WORKFLOW, run_product_search)
+    graph.add_node(NodeName.PRODUCT_BUNDLE_SEARCH_WORKFLOW, run_product_bundle_search)
     graph.add_node(NodeName.PRODUCT_COMPARISON_WORKFLOW, run_product_comparison)
     graph.add_node(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, run_generate_signup_form)
     graph.add_node(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, run_signup_with_details)
@@ -241,6 +243,7 @@ async def create_base_graph():
         {
             # Protected workflows (require authentication)
             WorkflowType.PRODUCT_SEARCH: NodeName.PRODUCT_SEARCH_WORKFLOW,
+            WorkflowType.PRODUCT_BUNDLE_SEARCH: NodeName.PRODUCT_BUNDLE_SEARCH_WORKFLOW,
             WorkflowType.PRODUCT_COMPARISON: NodeName.PRODUCT_COMPARISON_WORKFLOW,
             WorkflowType.PLACE_ORDER: NodeName.AUTH_PROTECTED_PLACE_ORDER_WORKFLOW,
             WorkflowType.ADD_TO_CART: NodeName.AUTH_PROTECTED_ADD_TO_CART_WORKFLOW,
@@ -274,6 +277,7 @@ async def create_base_graph():
     
     # Regular workflows
     graph.add_edge(NodeName.PRODUCT_SEARCH_WORKFLOW, NodeName.OUTPUT_HANDLER)
+    graph.add_edge(NodeName.PRODUCT_BUNDLE_SEARCH_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.PRODUCT_COMPARISON_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.GENERATE_SIGNUP_FORM_WORKFLOW, NodeName.OUTPUT_HANDLER)
     graph.add_edge(NodeName.SIGNUP_WITH_DETAILS_WORKFLOW, NodeName.OUTPUT_HANDLER)

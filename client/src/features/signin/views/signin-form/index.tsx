@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useCallback } from "react";
-import { useChatStore } from "@/store/chat-store";
 import "./style.css";
 
 const formSchema = z.object({
@@ -33,11 +32,17 @@ const formSchema = z.object({
     }),
 });
 
-type LoginFormData = z.infer<typeof formSchema>;
+export type LoginFormData = z.infer<typeof formSchema>;
 
-const SigninForm = () => {
-  const { sendMessage } = useChatStore();
+interface SigninFormProps {
+  onSubmit: (credentials: LoginFormData) => Promise<void> | void;
+  isLoading?: boolean;
+}
 
+const SigninForm = ({
+  onSubmit: handleSubmit,
+  isLoading = false,
+}: SigninFormProps) => {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -48,14 +53,9 @@ const SigninForm = () => {
 
   const onSubmit = useCallback(
     async (data: LoginFormData) => {
-      const message = `Here is my login credentials:
-- Email: ${data.email}
-- Password: ${data.password}
-`;
-      await sendMessage(message);
-      // Handle form submission
+      await handleSubmit(data);
     },
-    [sendMessage]
+    [handleSubmit]
   );
 
   return (
@@ -105,8 +105,8 @@ const SigninForm = () => {
               )}
             />
 
-            <Button type="submit" className="w-full mt-4">
-              Sign In
+            <Button type="submit" className="w-full mt-4" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </Form>

@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useCallback } from "react";
-import { useChatStore } from "@/store/chat-store";
 import "./style.css";
 
 const formSchema = z.object({
@@ -56,11 +55,17 @@ const formSchema = z.object({
     .min(10, { message: "Phone number must be at least 10 digits." }),
 });
 
-type SignupFormData = z.infer<typeof formSchema>;
+export type SignupFormData = z.infer<typeof formSchema>;
 
-const SignupForm = () => {
-  const { sendMessage } = useChatStore();
+interface SignupFormProps {
+  onSubmit: (data: SignupFormData) => Promise<void> | void;
+  isLoading?: boolean;
+}
 
+const SignupForm = ({
+  onSubmit: handleSubmit,
+  isLoading = false,
+}: SignupFormProps) => {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -84,17 +89,9 @@ const SignupForm = () => {
 
   const onSubmit = useCallback(
     async (data: SignupFormData) => {
-      const message = `I would like to create a new account with the following information:
-      - Email: ${data.email}
-      - Password: ${data.password}
-      - First Name: ${data.first_name}
-      - Last Name: ${data.last_name}
-      - Phone: ${data.phone}
-      `;
-      await sendMessage(message);
-      // Handle form submission
+      await handleSubmit(data);
     },
-    [sendMessage]
+    [handleSubmit]
   );
 
   return (
@@ -216,8 +213,8 @@ const SignupForm = () => {
               )}
             />
 
-            <Button type="submit" className="w-full mt-4">
-              Create Account
+            <Button type="submit" className="w-full mt-4" disabled={isLoading}>
+              {isLoading ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
         </Form>

@@ -8,8 +8,8 @@ import PaymentForm from "@/features/place-order/views/payment-form";
 import PaymentStatus from "@/features/place-order/views/payment-status";
 import type { PaymentDetails as PaymentDetailsType } from "@/features/place-order/types";
 import type { PaymentStatusDetails as PaymentStatusDetailsType } from "@/features/place-order/types";
-import SigninForm from "@/features/signin/views/signin-form";
-import SignupForm from "@/features/signup/views/signup-form";
+import SigninFormChat from "@/features/signin/views/signin-form-chat";
+import SignupFormChat from "@/features/signup/views/signup-form-chat";
 import type { SigninSuccess as SigninSuccessType } from "@/features/signin/types";
 import SigninSuccess from "@/features/signin/views/signin-success";
 import AddToCartSuccess from "@/features/cart-management/views/add-to-cart-success";
@@ -32,6 +32,7 @@ import OrdersWindow, {
 } from "@/features/cart-management/views/orders-window";
 import ProductsComparison from "@/features/product-comparison/views/products-comparison";
 import type { ProductComparisonPayload } from "@/features/product-comparison/types";
+import BundleResults from "@/features/product-bundle-search/views/bundle-results";
 import StatusCard from "../status-card";
 import { get } from "lodash";
 import {
@@ -121,20 +122,6 @@ const SignedOutChatWindow = () => {
     await sendMessage(message);
   };
 
-  const handleSignIn = () => {
-    setWidgetJson({
-      template: "signin_form",
-      payload: {},
-    });
-  };
-
-  const handleSignUp = () => {
-    setWidgetJson({
-      template: "signup_form",
-      payload: {},
-    });
-  };
-
   const getMappedTemplate = ({
     template,
     payload,
@@ -147,6 +134,8 @@ const SignedOutChatWindow = () => {
         return (
           <ProductWindow payload={payload as ProductWindowProps["payload"]} />
         );
+      case "product_bundle_results":
+        return <BundleResults payload={payload as any} />;
       case "order_details":
         return <div>Order Details: {JSON.stringify(payload)}</div>;
       case "initiate_payment":
@@ -154,11 +143,11 @@ const SignedOutChatWindow = () => {
       case "payment_status_details":
         return <PaymentStatus details={payload as PaymentStatusDetailsType} />;
       case "signin_form":
-        return <SigninForm />;
+        return <SigninFormChat />;
       case "signup_form":
-        return <SignupForm />;
+        return <SignupFormChat />;
       case "signup_success":
-        return <SigninForm />;
+        return <SigninFormChat />;
       case "signin_success":
         return <SigninSuccess details={payload as SigninSuccessType} />;
       case "add_to_cart_success":
@@ -226,11 +215,7 @@ const SignedOutChatWindow = () => {
 
   return (
     <>
-      <ChatHeader
-        isLoggedIn={false}
-        onSignIn={handleSignIn}
-        onSignUp={handleSignUp}
-      />
+      <ChatHeader isLoggedIn={false} />
 
       <div
         className={`w-full h-screen pt-16 flex ${
