@@ -403,7 +403,7 @@ class ProductService:
         Sanitize user input for FTS5 MATCH queries.
         Removes/escapes special FTS5 characters that could cause syntax errors.
         
-        FTS5 special characters: " * ( ) AND OR NOT
+        FTS5 special characters: " * ( ) AND OR NOT - (hyphen is NOT operator)
         Problem characters: & @ # $ % ^ ! ~ ` = + < > [ ] { } | backslash ; : , ?
         
         Args:
@@ -417,10 +417,14 @@ class ProductService:
         if not query:
             return ""
         
-        # Remove or replace problematic characters
-        # Keep: letters, numbers, spaces, hyphens, apostrophes
+        # Replace hyphens with spaces first (hyphens are FTS5 NOT operators)
+        # This handles cases like "pull-up bar" -> "pull up bar"
+        sanitized = query.replace('-', ' ')
+        
+        # Remove or replace other problematic characters
+        # Keep: letters, numbers, spaces, apostrophes
         # Remove: &, @, #, $, %, ^, !, ~, `, =, +, <, >, [, ], {, }, |, \, ;, :, comma
-        sanitized = re.sub(r'[&@#$%^!~`=+<>\[\]{}|\\;:,?]', ' ', query)
+        sanitized = re.sub(r'[&@#$%^!~`=+<>\[\]{}|\\;:,?]', ' ', sanitized)
         
         # Replace multiple spaces with single space
         sanitized = re.sub(r'\s+', ' ', sanitized)

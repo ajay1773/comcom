@@ -135,7 +135,21 @@ const SignedOutChatWindow = () => {
           <ProductWindow payload={payload as ProductWindowProps["payload"]} />
         );
       case "product_bundle_results":
-        return <BundleResults payload={payload as any} />;
+        return (
+          <BundleResults
+            payload={
+              payload as {
+                bundle_title: string;
+                bundle_description: string;
+                essential_items: Record<string, any[]>;
+                recommended_items: Record<string, any[]>;
+                optional_items: Record<string, any[]>;
+                total_categories: number;
+                total_products: number;
+              }
+            }
+          />
+        );
       case "order_details":
         return <div>Order Details: {JSON.stringify(payload)}</div>;
       case "initiate_payment":

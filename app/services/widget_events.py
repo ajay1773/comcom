@@ -14,6 +14,7 @@ class WidgetEventType(str, Enum):
     """Enumeration of all widget event types."""
     PRODUCT_SEARCH_RESULTS = "product_search_results"
     PRODUCT_COMPARISON_RESULTS = "product_comparison_results"
+    PRODUCT_BUNDLE_RESULTS = "product_bundle_results"
     CART_DETAILS = "cart_details"
     USER_PROFILE_DETAILS = "user_profile_details"
     USER_ADDRESSES = "user_addresses"

@@ -49,6 +49,7 @@ import OrdersWindow, {
 } from "@/features/cart-management/views/orders-window";
 import ProductsComparison from "@/features/product-comparison/views/products-comparison";
 import type { ProductComparisonPayload } from "@/features/product-comparison/types";
+import BundleResults from "@/features/product-bundle-search/views/bundle-results";
 import StatusCard from "../status-card";
 import { get } from "lodash";
 
@@ -241,6 +242,22 @@ const SignedInChatWindow = () => {
       case "product_comparison_results":
         return (
           <ProductsComparison payload={payload as ProductComparisonPayload} />
+        );
+      case "product_bundle_results":
+        return (
+          <BundleResults
+            payload={
+              payload as {
+                bundle_title: string;
+                bundle_description: string;
+                essential_items: Record<string, any[]>;
+                recommended_items: Record<string, any[]>;
+                optional_items: Record<string, any[]>;
+                total_categories: number;
+                total_products: number;
+              }
+            }
+          />
         );
       case "status_card_no_products_found":
       case "status_card_category_mismatch":

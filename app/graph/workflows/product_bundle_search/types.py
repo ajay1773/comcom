@@ -18,7 +18,6 @@ class ProductBundleSearchState(CommonState):
 
     # Input from user
     use_case: str  # "play cricket", "camping trip", "home gym"
-    user_level: Optional[str]  # "beginner", "intermediate", "professional"
     budget_total: Optional[float]  # total budget for bundle
     bundle_query: str  # query for the bundle
 

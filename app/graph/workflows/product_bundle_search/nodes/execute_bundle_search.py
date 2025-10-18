@@ -1,8 +1,9 @@
 """Node for executing product searches for each bundle item."""
 
-from typing import Dict, Any
+from typing import Dict, Any, List, cast
 from app.graph.workflows.product_bundle_search.types import ProductBundleSearchState
 from app.services.db.product import product_service
+from app.services.db.db import Product
 
 
 async def execute_bundle_search_node(state: ProductBundleSearchState) -> Dict[str, Any]:
@@ -14,7 +15,9 @@ async def execute_bundle_search_node(state: ProductBundleSearchState) -> Dict[st
     bundle_items = state.get("bundle_items", [])
     budget_total = state.get("budget_total")
 
-    bundle_results = {}
+    bundle_results = {
+
+    }
     total_products = 0
 
     # Search for each bundle item
@@ -22,6 +25,9 @@ async def execute_bundle_search_node(state: ProductBundleSearchState) -> Dict[st
         category = item["category"]
         keywords = item["keywords"]
         priority = item["priority"]
+
+        if category not in bundle_results:
+            bundle_results[category] = []
 
         # Build search parameters
         search_params = {
@@ -40,21 +46,21 @@ async def execute_bundle_search_node(state: ProductBundleSearchState) -> Dict[st
         products = await product_service.search_products_fts(search_params, limit=limit)
 
         # Store results grouped by category
-        bundle_results[category] = [
-            {
-                "id": p.id,
-                "title": p.title,
-                "brand": p.brand,
-                "price": p.price,
-                "rating": p.rating,
-                "thumbnail": p.thumbnail,
-                "category": p.category,
-                "priority": priority,
-                "purpose": item["purpose"],
-                "quantity": item["quantity"]
-            }
-            for p in products
-        ]
+        if products:
+            bundle_results[category].extend([
+                {
+                    "id": p.get("id"),
+                    "title": p.get("title", ""),
+                    "brand": p.get("brand", ""),
+                    "price": p.get("price", 0),
+                    "rating": p.get("rating", 0),
+                    "thumbnail": p.get("thumbnail", ""),
+                    "category": p.get("category", ""),
+                    "priority": priority,
+                    "purpose": item["purpose"],
+                    "quantity": item["quantity"]
+                } for p in cast(List[Dict[str, Any]], products)
+            ])
 
         total_products += len(products)
 
