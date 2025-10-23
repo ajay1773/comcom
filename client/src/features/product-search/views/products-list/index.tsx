@@ -39,7 +39,7 @@ const CATEGORY_ICONS = {
 const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
   const getCategoryIcon = (category: string) => {
     const IconComponent = get(CATEGORY_ICONS, category, TbCategory);
-    return <IconComponent className="w-4 h-4" />;
+    return <IconComponent className="w-3 h-3 sm:w-4 sm:h-4" />;
   };
 
   const getStockBadgeVariant = (stock: number, availabilityStatus: string) => {
@@ -71,7 +71,7 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
   return (
     <>
       {!isEmpty(products) && (
-        <div className="flex w-full flex-wrap gap-4 h-full overflow-y-auto items-start">
+        <div className="flex w-full flex-wrap gap-2 sm:gap-3 md:gap-4 h-full overflow-y-auto items-start px-1 sm:px-0">
           {products.map((product, index) => {
             const originalPrice = defaultTo(get(product, "price"), 0);
             const discountPercentage = defaultTo(
@@ -89,12 +89,12 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
 
             return (
               <Card
-                className="py-0 gap-4 flex-none w-[calc(50%-0.5rem)] hover:shadow-lg transition-shadow"
+                className="py-0 gap-2 sm:gap-3 md:gap-4 flex-none w-full sm:w-[calc(50%-0.375rem)] md:w-[calc(50%-0.5rem)] hover:shadow-lg transition-shadow"
                 key={defaultTo(get(product, "id"), index)}
               >
-                <div className="relative">
+                <div className="relative bg-white rounded-t-lg sm:rounded-t-xl">
                   <img
-                    className="w-full h-48 object-cover rounded-t-xl"
+                    className="w-full h-32 sm:h-40 md:h-48 object-contain rounded-t-lg sm:rounded-t-xl"
                     src={defaultTo(
                       productImages[0],
                       defaultTo(get(product, "thumbnail"), "")
@@ -103,7 +103,7 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                   />
                   {discountPercentage > 0 && (
                     <Badge
-                      className="absolute top-2 right-2 bg-red-500 text-white"
+                      className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-red-500 text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5"
                       variant="destructive"
                     >
                       -{discountPercentage}%
@@ -111,16 +111,17 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                   )}
                 </div>
 
-                <CardContent className="flex flex-col items-start justify-start px-4 pb-2">
-                  <div className="flex flex-col gap-2 items-start justify-start w-full">
+                <CardContent className="flex flex-col items-start justify-start px-2.5 sm:px-3 md:px-4 pb-1.5 sm:pb-2">
+                  <div className="flex flex-col gap-1.5 sm:gap-2 items-start justify-start w-full">
                     {/* Brand and Category */}
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-medium text-blue-600">
+                      <span className="text-[10px] sm:text-xs font-medium text-blue-600 truncate max-w-[60%]">
                         {get(product, "brand", "")}
                       </span>
+                      {/* Hide category badge on mobile */}
                       <Badge
                         variant="outline"
-                        className="flex items-center gap-1"
+                        className="hidden sm:flex items-center gap-1"
                       >
                         {getCategoryIcon(get(product, "category", ""))}
                         <span className="text-xs capitalize">
@@ -130,21 +131,21 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                     </div>
 
                     {/* Product Title */}
-                    <h3 className="text-sm font-medium line-clamp-2 leading-tight">
+                    <h3 className="text-xs sm:text-sm font-medium line-clamp-2 leading-tight">
                       {get(product, "title", "")}
                     </h3>
 
                     {/* Price */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       {discountPercentage > 0 ? (
                         <>
-                          <span className="text-lg font-bold text-green-600">
+                          <span className="text-sm sm:text-base md:text-lg font-bold text-green-600">
                             $
                             {isNumber(discountedPrice)
                               ? discountedPrice.toFixed(2)
                               : "0.00"}
                           </span>
-                          <span className="text-sm text-muted-foreground line-through">
+                          <span className="text-[10px] sm:text-xs md:text-sm text-muted-foreground line-through">
                             $
                             {isNumber(originalPrice)
                               ? originalPrice.toFixed(2)
@@ -152,14 +153,15 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                           </span>
                         </>
                       ) : (
-                        <span className="text-lg font-bold">
+                        <span className="text-sm sm:text-base md:text-lg font-bold">
                           $
                           {isNumber(originalPrice)
                             ? originalPrice.toFixed(2)
                             : "0.00"}
                         </span>
                       )}
-                      <span className="text-xs text-muted-foreground">
+                      {/* Hide unit on mobile */}
+                      <span className="hidden sm:inline text-xs text-muted-foreground">
                         per {get(product, "unit", "item")}
                       </span>
                     </div>
@@ -167,14 +169,16 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                     {/* Rating and Stock */}
                     <div className="flex items-center justify-between w-full">
                       {get(product, "rating", 0) > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-yellow-500">⭐</span>
-                          <span className="text-xs font-medium">
+                        <div className="flex items-center gap-0.5 sm:gap-1">
+                          <span className="text-yellow-500 text-xs sm:text-sm">
+                            ⭐
+                          </span>
+                          <span className="text-[10px] sm:text-xs font-medium">
                             {isNumber(get(product, "rating"))
                               ? get(product, "rating").toFixed(1)
                               : "0.0"}
                           </span>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">
                             /5
                           </span>
                         </div>
@@ -187,7 +191,7 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                             get(product, "stock", 0),
                             get(product, "availability_status", "")
                           )}
-                          className="text-xs"
+                          className="text-[9px] sm:text-[10px] md:text-xs px-1.5 sm:px-2 py-0.5"
                         >
                           {getStockText(
                             get(product, "stock", 0),
@@ -197,10 +201,10 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                       )}
                     </div>
 
-                    {/* Sizes */}
+                    {/* Sizes - Hidden on mobile */}
                     {has(product, "available_sizes") &&
                       !isEmpty(get(product, "available_sizes")) && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="hidden sm:block text-xs text-muted-foreground">
                           Sizes:{" "}
                           {join(
                             slice(get(product, "available_sizes"), 0, 3),
@@ -211,18 +215,18 @@ const ProductsList = ({ products, onSelectProduct }: ProductsListProps) => {
                         </p>
                       )}
 
-                    {/* SKU */}
+                    {/* SKU - Hidden on mobile */}
                     {has(product, "sku") && get(product, "sku") && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="hidden sm:block text-xs text-muted-foreground">
                         SKU: {get(product, "sku")}
                       </p>
                     )}
                   </div>
                 </CardContent>
 
-                <CardFooter className="flex items-center flex-col gap-2 justify-between w-full p-4 pt-0">
+                <CardFooter className="flex items-center flex-col gap-2 justify-between w-full px-2.5 sm:px-3 md:px-4 pb-2.5 sm:pb-3 md:pb-4 pt-0">
                   <Button
-                    className="w-full"
+                    className="w-full text-xs sm:text-sm h-8 sm:h-9 md:h-10"
                     variant={"default"}
                     onClick={() => {
                       onSelectProduct(product);

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import Sidebar from "../../components/sidebar";
 import ChatWindow from "../../components/chat-window";
 import { useChatStore } from "../../store/chat-store";
 
@@ -61,7 +60,7 @@ const Chat = () => {
   return (
     <div className="flex w-full h-full">
       {/* Only show sidebar for logged-in users */}
-      {isLoggedIn && <Sidebar />}
+      {/* {isLoggedIn && <Sidebar />} */}
       <ChatWindow />
     </div>
   );

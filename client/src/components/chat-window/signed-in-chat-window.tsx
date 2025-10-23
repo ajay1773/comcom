@@ -1,11 +1,5 @@
-import { useRef, useEffect } from "react";
-import {
-  LuBookmark,
-  LuCircleX,
-  LuEllipsis,
-  LuHeart,
-  LuSquareArrowOutUpRight,
-} from "react-icons/lu";
+import { useRef, useEffect, useState } from "react";
+import { LuCircleX, LuEllipsis, LuMenu } from "react-icons/lu";
 import AutoResizeInput from "../auto-resize-input";
 import { useChatStore } from "../../store/chat-store";
 import UserMessage from "../user-message";
@@ -52,6 +46,9 @@ import type { ProductComparisonPayload } from "@/features/product-comparison/typ
 import BundleResults from "@/features/product-bundle-search/views/bundle-results";
 import StatusCard from "../status-card";
 import { get } from "lodash";
+import { RateLimitSnackbar } from "../rate-limit-snackbar";
+import { SidebarDesktop, SidebarMobile } from "../sidebar";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const MoreOptionsDropdown = () => {
   const { setWidgetJson, logout } = useChatStore();
@@ -105,7 +102,7 @@ const MoreOptionsDropdown = () => {
 const getStatusCardIcon = (iconName: string) => {
   const iconMap: Record<string, React.ReactNode> = {
     "search-x": <LuCircleX className="h-8 w-8 text-red-500" />,
-    "package-plus": <LuBookmark className="h-8 w-8 text-blue-500" />,
+    "package-plus": <LuCircleX className="h-8 w-8 text-blue-500" />,
     "alert-triangle": <LuEllipsis className="h-8 w-8 text-yellow-500" />,
   };
   return iconMap[iconName] || <LuCircleX className="h-8 w-8 text-gray-500" />;
@@ -124,11 +121,15 @@ const SignedInChatWindow = () => {
     widgetJson,
     currentStreamingMessageId,
     currentConversation,
-    favoriteConversation,
+    rateLimitStatus,
+    checkRateLimitStatus,
+    isLoading,
   } = useChatStore();
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // Auto-scroll functions
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
@@ -157,6 +158,11 @@ const SignedInChatWindow = () => {
     }
   }, [currentStreamingMessageId, messages]);
 
+  // Check rate limit status on component mount
+  useEffect(() => {
+    checkRateLimitStatus();
+  }, [checkRateLimitStatus]);
+
   useEffect(() => {
     if (currentStreamingMessageId) {
       const streamingMessage = messages.find(
@@ -171,19 +177,6 @@ const SignedInChatWindow = () => {
   const handleMessageSubmit = async (message: string) => {
     scrollToBottom("instant");
     await sendMessage(message);
-  };
-
-  const handleToggleFavorite = async () => {
-    if (currentConversation?.id) {
-      try {
-        await favoriteConversation(
-          currentConversation.id,
-          !currentConversation.is_favorite
-        );
-      } catch (error) {
-        console.error("Failed to toggle favorite:", error);
-      }
-    }
   };
 
   const getMappedTemplate = ({
@@ -205,11 +198,11 @@ const SignedInChatWindow = () => {
       case "payment_status_details":
         return <PaymentStatus details={payload as PaymentStatusDetailsType} />;
       case "signin_form":
-        return <SigninForm />;
+        return <SigninForm onSubmit={() => {}} />;
       case "signup_form":
-        return <SignupForm />;
+        return <SignupForm onSubmit={() => {}} />;
       case "signup_success":
-        return <SigninForm />;
+        return <SigninForm onSubmit={() => {}} />;
       case "signin_success":
         return <SigninSuccess details={payload as SigninSuccessType} />;
       case "add_to_cart_success":
@@ -250,11 +243,48 @@ const SignedInChatWindow = () => {
               payload as {
                 bundle_title: string;
                 bundle_description: string;
-                essential_items: Record<string, any[]>;
-                recommended_items: Record<string, any[]>;
-                optional_items: Record<string, any[]>;
-                total_categories: number;
-                total_products: number;
+                essential_items: Record<
+                  string,
+                  Array<{
+                    id: number;
+                    title: string;
+                    brand: string;
+                    price: number;
+                    rating: number;
+                    thumbnail: string;
+                    priority: number;
+                    purpose: string;
+                    quantity: number;
+                  }>
+                >;
+                recommended_items: Record<
+                  string,
+                  Array<{
+                    id: number;
+                    title: string;
+                    brand: string;
+                    price: number;
+                    rating: number;
+                    thumbnail: string;
+                    priority: number;
+                    purpose: string;
+                    quantity: number;
+                  }>
+                >;
+                optional_items: Record<
+                  string,
+                  Array<{
+                    id: number;
+                    title: string;
+                    brand: string;
+                    price: number;
+                    rating: number;
+                    thumbnail: string;
+                    priority: number;
+                    purpose: string;
+                    quantity: number;
+                  }>
+                >;
               }
             }
           />
@@ -268,7 +298,7 @@ const SignedInChatWindow = () => {
             title={get(payload, "title", "No Products Found")}
             subtitle={get(payload, "subtitle", "No Products Found")}
             actions={
-              get(payload, "actions", []) && (
+              get(payload, "actions", []).length > 0 && (
                 <div className="flex gap-2 flex-wrap">
                   {get(payload, "actions", []).map((action, index) => (
                     <button
@@ -292,119 +322,157 @@ const SignedInChatWindow = () => {
   };
 
   return (
-    <div className="w-4/5 h-full flex bg-transparent">
-      {/* Chat Area */}
-      <div className="flex flex-col w-3/5 h-full bg-neutral-600/10 rounded-l-2xl border-r border-r-neutral-400/10">
-        <div className="flex justify-between w-full px-8 border-b border-b-neutral-400/10 h-[68px] items-center">
-          <h2 className="text-white text-2xl font-semibold">
+    <div className="w-full h-screen flex">
+      {/* Mobile Sidebar */}
+      <SidebarMobile
+        open={isMobileSidebarOpen}
+        onOpenChange={setIsMobileSidebarOpen}
+      />
+
+      {/* Desktop Sidebar */}
+      {isDesktop && <SidebarDesktop />}
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header - Always full width */}
+        <div className="flex justify-between w-full px-4 sm:px-6 md:px-8 border-b border-b-neutral-400/10 h-[56px] sm:h-[64px] md:h-[68px] items-center">
+          {!isDesktop && (
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-1.5 sm:p-2 active:scale-95 transition-all duration-300 cursor-pointer group"
+            >
+              <LuMenu className="size-6" />
+            </button>
+          )}
+          <h2 className="text-white text-lg sm:text-xl md:text-2xl font-semibold truncate flex-1">
             {currentConversation?.title || "New Chat"}
           </h2>
-          <div className="flex justify-center items-center gap-6">
-            <button
-              onClick={handleToggleFavorite}
-              className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group"
-            >
-              <LuHeart
-                className={`size-[20px] transition-all duration-300 ${
-                  currentConversation?.is_favorite
-                    ? "text-red-500 fill-red-500"
-                    : "text-neutral-600 group-hover:text-red-500"
-                }`}
-              />
-            </button>
-            <button className="flex justify-center items-center hover:bg-neutral-600/10 rounded-lg p-2 active:scale-95 transition-all duration-300 cursor-pointer group">
-              <LuBookmark className="text-neutral-600 size-[20px] group-hover:text-white transition-all duration-300" />
-            </button>
+          <div className="flex justify-center items-center gap-3 sm:gap-4 md:gap-6">
             <MoreOptionsDropdown />
           </div>
         </div>
 
+        {/* Content Area - Chat + Widget */}
         <div
-          className="flex flex-col w-full flex-1 px-8 py-4 overflow-y-auto"
-          ref={chatWindowRef}
+          className={`flex-1 flex overflow-hidden ${
+            widgetJson ? "justify-start" : "justify-center"
+          }`}
         >
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full">
-              <p className="text-neutral-500 text-lg font-medium mb-2">
-                Start a conversation
-              </p>
-              <p className="text-neutral-700 text-sm">
-                Send a message to begin chatting with AI
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {messages.map((message, index) => {
-                const isLastMessage = index === messages.length - 1;
-                const isStreamingMessage =
-                  message.id === currentStreamingMessageId;
+          {/* Chat Area */}
+          <div
+            className={`flex flex-col ${
+              widgetJson ? "w-full lg:w-3/5" : "w-full max-w-3xl"
+            } h-full bg-transparent ${
+              widgetJson
+                ? "lg:border-r lg:border-r-neutral-400/10"
+                : "border-none"
+            }`}
+          >
+            {/* Chat Messages - Flexible height */}
+            <div
+              className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-3 sm:py-4"
+              ref={chatWindowRef}
+            >
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <p className="text-neutral-500 text-base sm:text-lg font-medium mb-2">
+                    Start a conversation
+                  </p>
+                  <p className="text-neutral-700 text-xs sm:text-sm">
+                    Send a message to begin chatting with AI
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  {messages.map((message, index) => {
+                    const isLastMessage = index === messages.length - 1;
+                    const isStreamingMessage =
+                      message.id === currentStreamingMessageId;
 
-                if (message.role === "tool") {
-                  return (
-                    <div
-                      key={message.id}
-                      ref={isLastMessage ? lastMessageRef : null}
-                    >
-                      <p>{message.content}</p>
+                    if (message.role === "tool") {
+                      return (
+                        <div
+                          key={message.id}
+                          ref={isLastMessage ? lastMessageRef : null}
+                        >
+                          <p className="text-sm sm:text-base">
+                            {message.content}
+                          </p>
+                        </div>
+                      );
+                    }
+                    if (message.role === "user") {
+                      return (
+                        <div
+                          key={message.id}
+                          ref={isLastMessage ? lastMessageRef : null}
+                          className={isStreamingMessage ? "scroll-mt-4" : ""}
+                        >
+                          <UserMessage message={message} />
+                        </div>
+                      );
+                    }
+                    if (message.role === "assistant") {
+                      // Get widget component if this message has associated JSON
+                      const widgetData = message.json
+                        ? message.json
+                        : {
+                            template: get(
+                              message,
+                              "widget_json.widget_type",
+                              ""
+                            ),
+                            payload: get(message, "widget_json.payload", {}),
+                          };
+                      const widgetComponent = getMappedTemplate(widgetData);
+
+                      return (
+                        <div
+                          key={message.id}
+                          ref={isLastMessage ? lastMessageRef : null}
+                          className={isStreamingMessage ? "scroll-mt-4" : ""}
+                        >
+                          <AssistantMessage
+                            message={message}
+                            widgetComponent={widgetComponent}
+                          />
+                        </div>
+                      );
+                    }
+                  })}
+                  {error && (
+                    <div className="flex justify-start">
+                      <div className="bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-2 sm:px-4 sm:py-3 rounded-lg max-w-[90%] sm:max-w-[80%]">
+                        <p className="text-xs sm:text-sm">Error: {error}</p>
+                      </div>
                     </div>
-                  );
-                }
-                if (message.role === "user") {
-                  return (
-                    <div
-                      key={message.id}
-                      ref={isLastMessage ? lastMessageRef : null}
-                      className={isStreamingMessage ? "scroll-mt-4" : ""}
-                    >
-                      <UserMessage message={message} />
-                    </div>
-                  );
-                }
-                if (message.role === "assistant") {
-                  return (
-                    <div
-                      key={message.id}
-                      ref={isLastMessage ? lastMessageRef : null}
-                      className={isStreamingMessage ? "scroll-mt-4" : ""}
-                    >
-                      <AssistantMessage message={message} />
-                    </div>
-                  );
-                }
-              })}
-              {error && (
-                <div className="flex justify-start">
-                  <div className="bg-red-500/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg max-w-[80%]">
-                    <p className="text-sm">Error: {error}</p>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Input Area - Fixed at bottom */}
+            <div className="shrink-0 flex flex-col w-full px-4 sm:px-6 md:px-8 pt-3 sm:pt-4 pb-4 sm:pb-6 md:pb-8 gap-2 border-t border-t-neutral-400/10">
+              <RateLimitSnackbar />
+              <AutoResizeInput
+                placeholder={
+                  rateLimitStatus.isRateLimited
+                    ? "Rate limit reached - please wait..."
+                    : "Type your message here..."
+                }
+                onSubmit={handleMessageSubmit}
+                onMessageChange={() => {}}
+                disabled={rateLimitStatus.isRateLimited || isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Widget Panel - Hidden on mobile/tablet, visible on desktop */}
+          {widgetJson && (
+            <div className="hidden lg:flex flex-col w-2/5 h-full overflow-y-auto p-6">
+              {getMappedTemplate(widgetJson)}
+            </div>
           )}
-        </div>
-
-        <div className="flex flex-col w-full px-8 pb-8">
-          <AutoResizeInput
-            placeholder="Type your message here..."
-            onSubmit={handleMessageSubmit}
-            onMessageChange={() => {}}
-          />
-        </div>
-      </div>
-
-      {/* Widget Panel */}
-      <div className="flex flex-col w-2/5 h-full bg-neutral-600/10 rounded-r-2xl">
-        <div className="flex items-center justify-between gap-10 border-b border-b-neutral-400/10 h-[68px]">
-          <Button variant="ghost" size="icon" className="size-8 ml-8">
-            <LuSquareArrowOutUpRight className="size-[20px]" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8 mr-8">
-            <LuCircleX className="size-[20px]" />
-          </Button>
-        </div>
-
-        <div className="flex flex-col w-full p-8 h-[calc(100%-68px)] overflow-y-auto">
-          {widgetJson && getMappedTemplate(widgetJson)}
         </div>
       </div>
     </div>

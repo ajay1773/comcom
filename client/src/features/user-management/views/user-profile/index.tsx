@@ -22,7 +22,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { UserProfileData } from "../../types";
-import { get, isEmpty, isNil, size, map } from "lodash";
+import { get, isEmpty, isNil, map } from "lodash";
 
 type Props = {
   data?: UserProfileData;
@@ -88,24 +88,24 @@ const UserProfile = ({ data }: Props) => {
   };
 
   return (
-    <div className="max-w-4xl h-full overflow-y-auto">
+    <div className="max-w-4xl h-full overflow-y-auto p-4 sm:p-6">
       {/* Header with success message */}
-      <div className="grid grid-cols-3 grid-rows-[repeat(6,fit-content)] gap-5">
-        <div className="col-span-3 row-span-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardContent className="">
-              <div className="flex items-start gap-4">
-                <div className="rounded-full bg-primary/10 p-3">
-                  <User className="size-6 text-primary" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="rounded-full bg-primary/10 p-2 sm:p-3">
+                  <User className="size-5 sm:size-6 text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h1 className="text-2xl font-bold mb-2">
+                  <h1 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-2">
                     {userFirstName} {userLastName}
                   </h1>
                 </div>
                 <Badge
                   variant={"default"}
-                  className="bg-green-400 text-primary-foreground"
+                  className="bg-green-400 text-primary-foreground self-start sm:self-center"
                 >
                   <CheckCircle className="size-3 mr-1" />
                   {accountStatus}
@@ -115,16 +115,16 @@ const UserProfile = ({ data }: Props) => {
           </Card>
         </div>
 
-        <div className="col-span-3 row-span-1">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="size-5" />
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <User className="size-4 sm:size-5" />
                 Personal Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-4 p-4 sm:p-6 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <Mail className="size-4 text-muted-foreground" />
                   <div>
@@ -165,29 +165,23 @@ const UserProfile = ({ data }: Props) => {
           </Card>
         </div>
 
-        <div className="col-span-3 row-span-2">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingBag className="size-5" />
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <ShoppingBag className="size-4 sm:size-5" />
                 Order History ({totalOrders})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {!isEmpty(user_orders) ? (
                 <Accordion type="single" collapsible className="w-full">
                   {map(user_orders, (order) => {
                     const orderId = get(order, "id", "");
                     const orderNumber = get(order, "order_number", orderId);
-                    const orderAmount = get(order, "amount", 0);
                     const paymentStatus = get(order, "payment_status", "");
                     const orderCreatedAt = get(order, "created_at", "");
                     const orderItems = get(order, "items", []);
-                    const totalItems = get(
-                      order,
-                      "total_items",
-                      size(orderItems)
-                    );
 
                     return (
                       <AccordionItem
@@ -196,24 +190,28 @@ const UserProfile = ({ data }: Props) => {
                         className="border-b last:border-b-0"
                       >
                         <AccordionTrigger className="hover:no-underline">
-                          <div className="flex items-center justify-between w-full pr-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between w-full pr-4 gap-2">
                             <div className="flex items-center gap-3">
                               <div className="flex flex-col items-start">
                                 <div className="flex items-center gap-2">
                                   <Package className="size-4 text-muted-foreground" />
-                                  <span className="font-medium">
+                                  <span className="font-medium text-sm sm:text-base">
                                     Order #{orderNumber}
                                   </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs sm:text-sm text-muted-foreground">
                                   {formatDate(orderCreatedAt)}
                                 </p>
                               </div>
-                              <Badge variant={getStatusVariant(paymentStatus)}>
-                                {paymentStatus}
-                              </Badge>
                             </div>
-                            {/* <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <Badge
+                              variant={getStatusVariant(paymentStatus)}
+                              className="self-start sm:self-center"
+                            >
+                              {paymentStatus}
+                            </Badge>
+                          </div>
+                          {/* <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>
                                 {totalItems} item{totalItems !== 1 ? "s" : ""}
                               </span>
@@ -222,7 +220,6 @@ const UserProfile = ({ data }: Props) => {
                               </span>
                               <span>{formatDate(orderCreatedAt)}</span>
                             </div> */}
-                          </div>
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="space-y-3 pt-2">
@@ -252,10 +249,10 @@ const UserProfile = ({ data }: Props) => {
                                 return (
                                   <div
                                     key={itemId}
-                                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-muted/30 rounded-lg gap-3"
                                   >
                                     <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                                         <h4 className="font-medium text-sm">
                                           {itemName}
                                         </h4>
@@ -263,26 +260,23 @@ const UserProfile = ({ data }: Props) => {
                                           !isEmpty(itemStatus) && (
                                             <Badge
                                               variant="outline"
-                                              className="text-xs"
+                                              className="text-xs self-start"
                                             >
                                               {itemStatus}
                                             </Badge>
                                           )}
                                       </div>
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-muted-foreground">
                                         {!isEmpty(itemBrand) && (
                                           <span>Brand: {itemBrand}</span>
                                         )}
                                         {!isEmpty(itemSize) && (
                                           <span>• Size: {itemSize}</span>
                                         )}
-                                        {!isEmpty(itemColor) && (
-                                          <span>• Color: {itemColor}</span>
-                                        )}
                                         <span>• Qty: {itemQuantity}</span>
                                       </div>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-left sm:text-right">
                                       <div className="font-medium text-sm">
                                         ${Number(itemTotalPrice).toFixed(2)}
                                       </div>
@@ -317,12 +311,14 @@ const UserProfile = ({ data }: Props) => {
           </Card>
         </div>
 
-        <div className="col-span-3 row-span-1">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardHeader>
-              <CardTitle>Profile Summary</CardTitle>
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl">
+                Profile Summary
+              </CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-between">
+            <CardContent className="flex flex-col sm:flex-row justify-between gap-4 p-4 sm:p-6 pt-0">
               <div className="flex flex-col items-center justify-between gap-2">
                 <span className="text-sm text-center">Total Orders</span>
                 <Badge variant="secondary">{totalOrders}</Badge>
@@ -341,15 +337,15 @@ const UserProfile = ({ data }: Props) => {
           </Card>
         </div>
 
-        <div className="col-span-3 row-span-2">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="size-5" />
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <MapPin className="size-4 sm:size-5" />
                 Saved Addresses ({totalAddresses})
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 sm:p-6 pt-0">
               {!isEmpty(user_addresses) ? (
                 <div className="space-y-4">
                   {map(user_addresses, (address) => {
@@ -363,21 +359,27 @@ const UserProfile = ({ data }: Props) => {
                     const country = get(address, "country", "");
 
                     return (
-                      <div key={addressId} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="capitalize">
+                      <div
+                        key={addressId}
+                        className="border rounded-lg p-3 sm:p-4"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="capitalize text-xs"
+                            >
                               {addressType}
                             </Badge>
                             {isDefault && (
-                              <Badge variant="default">
+                              <Badge variant="default" className="text-xs">
                                 <CheckCircle className="size-3 mr-1" />
                                 Default
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <p className="text-sm">
+                        <p className="text-sm break-words">
                           {street}, {city}, {state} {zipCode}
                         </p>
                         <p className="text-sm text-muted-foreground">
@@ -400,14 +402,14 @@ const UserProfile = ({ data }: Props) => {
           </Card>
         </div>
 
-        <div className="col-span-3 row-span-1">
+        <div className="lg:col-span-3">
           <Card className="h-full w-full">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <CardTitle className="text-lg sm:text-xl font-semibold">
                 Quick Actions
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4 grid-rows-2">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 p-4 sm:p-6 pt-0">
               {map(suggested_actions, (action, index) => {
                 // Define action-specific styling and icons using theme-aware colors
                 const getActionConfig = (actionText: string) => {
@@ -462,15 +464,15 @@ const UserProfile = ({ data }: Props) => {
                     key={index}
                     className={`group relative overflow-hidden rounded-lg border-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02] cursor-pointer ${config.bgClass}`}
                   >
-                    <div className="p-4 flex flex-col items-start gap-2">
+                    <div className="p-3 sm:p-4 flex flex-col items-start gap-2">
                       <div className="flex items-center gap-2 w-full">
                         <div
-                          className={`p-1.5 rounded-md shadow-sm ${config.iconBg}`}
+                          className={`p-1 sm:p-1.5 rounded-md shadow-sm ${config.iconBg}`}
                         >
                           {config.icon}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium text-sm leading-tight">
+                          <h3 className="font-medium text-xs sm:text-sm leading-tight">
                             {action}
                           </h3>
                         </div>
@@ -484,8 +486,8 @@ const UserProfile = ({ data }: Props) => {
 
                       {/* Action indicator */}
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="size-6 rounded-full bg-background/90 border border-border flex items-center justify-center shadow-sm">
-                          <div className="size-1.5 rounded-full bg-current" />
+                        <div className="size-5 sm:size-6 rounded-full bg-background/90 border border-border flex items-center justify-center shadow-sm">
+                          <div className="size-1 sm:size-1.5 rounded-full bg-current" />
                         </div>
                       </div>
                     </div>

@@ -237,14 +237,12 @@ const ConversationList: React.FC<ConversationListProps> = ({ className }) => {
   } = useChatStore();
 
   useEffect(() => {
-    // Load conversations when component mounts
+    // Load conversations when component mounts (default: non-archived, non-favorite)
     loadConversations();
   }, [loadConversations]);
 
-  const filteredConversations = conversations.filter((conv) => {
-    // Show all non-archived conversations by default
-    return !conv.is_archived;
-  });
+  // Conversations are already filtered by the API, just display them
+  const filteredConversations = conversations;
 
   const handleConversationSelect = async (conversationId: number) => {
     // Use React Router navigation instead of direct store call

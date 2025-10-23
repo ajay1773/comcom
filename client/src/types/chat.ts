@@ -46,6 +46,10 @@ export type Message = {
     template: string;
     payload: unknown;
   };
+  widget_json?: {
+    template: string;
+    payload: unknown;
+  };
 };
 
 export type ToolStatus = "started" | "in_progress" | "completed" | "failed";

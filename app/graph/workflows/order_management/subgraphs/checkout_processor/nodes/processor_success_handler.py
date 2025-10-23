@@ -2,6 +2,7 @@ from app.graph.workflows.order_management.types import CheckoutProcessorState
 from langchain_core.runnables import RunnableConfig
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.utils.conversation_context import format_conversation_context_with_template
 
 async def processor_success_handler_node(state: CheckoutProcessorState, config: RunnableConfig | None = None) -> CheckoutProcessorState:
     """Handle successful checkout processing."""
@@ -20,6 +21,14 @@ async def processor_success_handler_node(state: CheckoutProcessorState, config: 
             state["checkout_success"] = False
             return state
         
+        # Get conversation context for personalized success message
+        conversation_context = format_conversation_context_with_template(
+            state=dict(state),
+            template_name="order_processing",
+            limit=5,
+            fallback_message=""
+        )
+        
         # Generate success message using LLM
         success_prompt = ChatPromptTemplate.from_messages([
             ("system", """
@@ -31,14 +40,16 @@ async def processor_success_handler_node(state: CheckoutProcessorState, config: 
                 3. Shows the total amount and payment method
                 4. Mentions next steps (tracking, delivery, etc.)
                 5. Keeps a positive, professional tone
+                6. If conversation context shows user preferences or concerns, acknowledge them naturally
                 
                 Keep it conversational and around 2-3 sentences.
             """),
-            ("user", f"Order {order_number} placed successfully! Total: ${total_amount:.2f}, Payment: {payment_method}, {len(cart_items)} items, checkout type: {checkout_type}")
+            ("user", f"Order {order_number} placed successfully! Total: ${total_amount:.2f}, Payment: {payment_method}, {len(cart_items)} items, checkout type: {checkout_type}"),
+            ("user", "{conversation_context}")
         ])
         
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
-        response = await llm.ainvoke(success_prompt.invoke({}))
+        response = await llm.ainvoke(success_prompt.invoke({"conversation_context": conversation_context}))
         
         success_message = str(response.content).strip()
         

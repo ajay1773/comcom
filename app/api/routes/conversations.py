@@ -34,8 +34,6 @@ class ConversationResponse(BaseModel):
         updated_at: ISO timestamp when conversation was last modified
         last_message_at: ISO timestamp of the last message in conversation
         message_count: Total number of messages in the conversation
-        is_archived: Whether the conversation is archived
-        is_favorite: Whether the conversation is marked as favorite
     """
     id: int
     thread_id: str
@@ -45,8 +43,6 @@ class ConversationResponse(BaseModel):
     updated_at: str | None
     last_message_at: str | None
     message_count: int
-    is_archived: bool
-    is_favorite: bool
 
 
 class ConversationListResponse(BaseModel):
@@ -69,12 +65,8 @@ class ConversationUpdateRequest(BaseModel):
     
     Attributes:
         title: New title for the conversation
-        is_archived: Archive status (true to archive, false to unarchive)
-        is_favorite: Favorite status (true to favorite, false to unfavorite)
     """
     title: Optional[str] = None
-    is_archived: Optional[bool] = None
-    is_favorite: Optional[bool] = None
 
 
 def conversation_to_response(conv: Conversation) -> ConversationResponse:
@@ -95,15 +87,12 @@ def conversation_to_response(conv: Conversation) -> ConversationResponse:
         created_at=conv.created_at,
         updated_at=conv.updated_at,
         last_message_at=conv.last_message_at,
-        message_count=conv.message_count,
-        is_archived=conv.is_archived,
-        is_favorite=conv.is_favorite
+        message_count=conv.message_count
     )
 
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def get_user_conversations(
-    include_archived: bool = Query(False, description="Include archived conversations in results"),
     limit: int = Query(50, ge=1, le=100, description="Maximum number of conversations to return"),
     offset: int = Query(0, ge=0, description="Number of conversations to skip for pagination"),
     search: Optional[str] = Query(None, description="Search term to filter conversations by title"),
@@ -117,7 +106,6 @@ async def get_user_conversations(
     (most recent first).
     
     Query Parameters:
-        - include_archived: Whether to include archived conversations (default: false)
         - limit: Maximum conversations to return (1-100, default: 50)
         - offset: Number of conversations to skip for pagination (default: 0)
         - search: Filter conversations by title containing this text (requires authentication)
@@ -140,8 +128,7 @@ async def get_user_conversations(
         
         if user_id:
             conversations = await conversation_service.get_user_conversations(
-                user_id=user_id,
-                include_archived=include_archived
+                user_id=user_id
             )
             
             # Apply search filter if provided
@@ -279,18 +266,6 @@ async def update_conversation_by_id(
                 update_data.title
             )
         
-        if update_data.is_archived is not None:
-            await conversation_service.archive_conversation(
-                conversation.thread_id, 
-                update_data.is_archived
-            )
-        
-        if update_data.is_favorite is not None:
-            await conversation_service.favorite_conversation(
-                conversation.thread_id, 
-                update_data.is_favorite
-            )
-        
         # Return updated conversation
         updated_conversation = await conversation_service.get_conversation_by_id(conversation_id)
         
@@ -404,7 +379,8 @@ async def regenerate_conversation_title(
             )
         
         # Regenerate title using conversation history
-        new_title = await conversation_service.regenerate_conversation_title(conversation.thread_id)
+        # Note: The returned title is not used directly as we refetch the full conversation
+        await conversation_service.regenerate_conversation_title(conversation.thread_id)
         
         # Return updated conversation
         updated_conversation = await conversation_service.get_conversation_by_id(conversation_id)

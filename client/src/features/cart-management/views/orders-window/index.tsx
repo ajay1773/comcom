@@ -113,12 +113,12 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {[1, 2, 3].map((i) => (
           <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="h-3 sm:h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/2 mt-2"></div>
             </CardHeader>
           </Card>
         ))}
@@ -129,11 +129,13 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
   if (error) {
     return (
       <Card className="border-red-200">
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 sm:pt-8">
           <div className="text-center text-red-600">
-            <Package className="mx-auto h-12 w-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">Unable to load orders</p>
-            <p className="text-sm">{error}</p>
+            <Package className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 opacity-50" />
+            <p className="text-base sm:text-lg font-medium mb-2">
+              Unable to load orders
+            </p>
+            <p className="text-xs sm:text-sm">{error}</p>
           </div>
         </CardContent>
       </Card>
@@ -143,11 +145,13 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
   if (isEmpty(orders)) {
     return (
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 sm:pt-8">
           <div className="text-center text-gray-500">
-            <Package className="mx-auto h-12 w-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No orders found</p>
-            <p className="text-sm">
+            <Package className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3 sm:mb-4 opacity-50" />
+            <p className="text-base sm:text-lg font-medium mb-2">
+              No orders found
+            </p>
+            <p className="text-xs sm:text-sm">
               Your order history will appear here once you place your first
               order.
             </p>
@@ -158,10 +162,10 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
   }
 
   return (
-    <div className="space-y-4 overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Your Orders</h2>
-        <Badge variant="secondary" className="text-sm">
+    <div className="space-y-3 sm:space-y-4 overflow-y-auto">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold">Your Orders</h2>
+        <Badge variant="secondary" className="text-xs sm:text-sm h-5 sm:h-auto">
           {orders.length} order{orders.length !== 1 ? "s" : ""}
         </Badge>
       </div>
@@ -174,57 +178,68 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
           <Card key={order.id} className="overflow-hidden">
             {/* Order Header - Always Visible */}
             <CardHeader
-              className="cursor-pointer hover:bg-gray-700/10 transition-colors"
+              className="cursor-pointer hover:bg-gray-700/10 transition-colors p-3 sm:p-6"
               onClick={() => toggleOrder(order.id)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg flex items-center gap-3">
-                    <span>Order #{order.order_number}</span>
-                    <Badge variant={getStatusVariant(order.status)}>
-                      {order.status}
-                    </Badge>
-                    <Badge
-                      variant={getPaymentStatusVariant(order.payment_status)}
-                    >
-                      {order.payment_status}
-                    </Badge>
+              <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-4">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-sm sm:text-base flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                    <span className="font-semibold">
+                      Order #{order.order_number}
+                    </span>
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <Badge
+                        variant={getStatusVariant(order.status)}
+                        className="text-[10px] sm:text-xs h-4 sm:h-5"
+                      >
+                        {order.status}
+                      </Badge>
+                      <Badge
+                        variant={getPaymentStatusVariant(order.payment_status)}
+                        className="text-[10px] sm:text-xs h-4 sm:h-5"
+                      >
+                        {order.payment_status}
+                      </Badge>
+                    </div>
                   </CardTitle>
 
-                  <div className="mt-2 grid grid-cols-2 md:grid-cols-2 grid-rows-2 gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{formatDate(order.created_at)}</span>
+                  <div className="mt-2 sm:mt-3 grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm text-gray-600">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="truncate text-[10px] sm:text-xs">
+                        {formatDate(order.created_at)}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4" />
-                      <span>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <Package className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="text-[10px] sm:text-xs">
                         {order.total_items} item
                         {order.total_items !== 1 ? "s" : ""}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span className="font-medium">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <CreditCard className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                      <span className="font-medium text-[10px] sm:text-xs">
                         {order.currency} {order.amount.toFixed(2)}
                       </span>
                     </div>
                     {order.payment_method && (
-                      <div className="mt-2 text-sm text-gray-500">
-                        Payment:{" "}
-                        {order.payment_method.replace("_", " ").toUpperCase()}
+                      <div className="flex items-center text-[10px] sm:text-xs text-gray-500">
+                        <span className="truncate">
+                          {order.payment_method.replace("_", " ").toUpperCase()}
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="ml-4">
+                <div className="shrink-0">
                   {isExpanded ? (
-                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                    <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   ) : (
-                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                    <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
                   )}
                 </div>
               </div>
@@ -232,88 +247,91 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
 
             {/* Order Items - Expandable Content */}
             {isExpanded && (
-              <CardContent className="pt-0">
-                <Separator className="mb-4" />
+              <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6">
+                <Separator className="mb-3 sm:mb-4" />
 
                 {order.notes && (
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="text-sm text-blue-800">
+                  <div className="mb-3 sm:mb-4 p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs sm:text-sm text-blue-800">
                       <strong>Notes:</strong> {order.notes}
                     </p>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <h4 className="font-medium text-foreground flex items-center gap-2">
-                    <Package className="h-4 w-4" />
+                <div className="space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium text-foreground flex items-center gap-1.5 sm:gap-2">
+                    <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     Order Items ({orderItems.length})
                   </h4>
 
                   {isEmpty(orderItems) ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Package className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                      <p>No items found for this order</p>
+                    <div className="text-center py-6 sm:py-8 text-gray-500">
+                      <Package className="mx-auto h-7 w-7 sm:h-8 sm:w-8 mb-2 opacity-50" />
+                      <p className="text-xs sm:text-sm">
+                        No items found for this order
+                      </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {orderItems.map((item, index) => (
                         <div
                           key={`${item.id}-${index}`}
-                          className="flex items-center justify-between p-4 bg-gray-700/10 rounded-lg border"
+                          className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 p-2.5 sm:p-4 bg-gray-700/10 rounded-lg border"
                         >
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col gap-1.5 sm:gap-2">
                               <div>
-                                <h5 className="font-medium text-foreground">
+                                <h5 className="text-sm sm:text-base font-medium text-foreground line-clamp-2">
                                   {item.name}
                                   {item.brand && (
-                                    <span className="ml-2 text-sm text-gray-500">
+                                    <span className="ml-1.5 sm:ml-2 text-xs sm:text-sm text-gray-500">
                                       by {item.brand}
                                     </span>
                                   )}
                                 </h5>
 
-                                <div className="mt-1 flex flex-wrap gap-2 text-sm text-gray-600">
+                                <div className="mt-1.5 sm:mt-2 flex flex-wrap gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
                                   {item.size && (
-                                    <span className="bg-white px-2 py-1 rounded border">
+                                    <span className="bg-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded border text-[10px] sm:text-xs">
                                       Size: {item.size}
                                     </span>
                                   )}
                                   {item.color && (
-                                    <span className="bg-white px-2 py-1 rounded border">
+                                    <span className="bg-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded border text-[10px] sm:text-xs">
                                       Color: {item.color}
                                     </span>
                                   )}
-                                  <span className="bg-white px-2 py-1 rounded border">
+                                  <span className="bg-white px-1.5 py-0.5 sm:px-2 sm:py-1 rounded border text-[10px] sm:text-xs">
                                     Qty: {item.quantity}
                                   </span>
                                   {item.status && (
                                     <Badge
                                       variant={getStatusVariant(item.status)}
-                                      className="text-xs"
+                                      className="text-[10px] sm:text-xs h-4 sm:h-5"
                                     >
                                       {item.status}
                                     </Badge>
                                   )}
                                 </div>
                               </div>
+                            </div>
+                          </div>
 
-                              <div className="text-right ml-4">
-                                <div className="font-medium">
-                                  ${item.total_price.toFixed(2)}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  ${item.unit_price.toFixed(2)} each
-                                </div>
-                                {item.discount_amount &&
-                                  item.discount_amount > 0 && (
-                                    <div className="text-sm text-green-600">
-                                      -${item.discount_amount.toFixed(2)}{" "}
-                                      discount
-                                    </div>
-                                  )}
+                          <div className="text-left sm:text-right shrink-0 flex sm:flex-col gap-2 sm:gap-1 justify-between sm:justify-start items-center sm:items-end">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="text-sm sm:text-base font-medium">
+                                ${item.total_price.toFixed(2)}
+                              </div>
+                              <div className="text-xs sm:text-sm text-gray-500">
+                                ${item.unit_price.toFixed(2)} each
                               </div>
                             </div>
+                            {item.discount_amount &&
+                              item.discount_amount > 0 && (
+                                <div className="text-xs sm:text-sm text-green-600 whitespace-nowrap">
+                                  -${item.discount_amount.toFixed(2)}
+                                </div>
+                              )}
                           </div>
                         </div>
                       ))}
@@ -321,18 +339,18 @@ const OrdersWindow: FC<OrdersWindowProps> = ({
                   )}
                 </div>
 
-                <Separator className="my-4" />
+                <Separator className="my-3 sm:my-4" />
 
                 {/* Order Summary */}
-                <div className="bg-gray-700/10 rounded-lg p-4">
-                  <div className="flex justify-between items-center text-lg font-semibold">
+                <div className="bg-gray-700/10 rounded-lg p-3 sm:p-4">
+                  <div className="flex justify-between items-center text-base sm:text-lg font-semibold">
                     <span>Order Total</span>
                     <span>
                       {order.currency} {order.amount.toFixed(2)}
                     </span>
                   </div>
 
-                  <div className="mt-2 text-sm text-gray-600">
+                  <div className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-gray-600">
                     <div className="flex justify-between">
                       <span>Items ({order.total_items})</span>
                       <span>

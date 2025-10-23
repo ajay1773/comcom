@@ -2,6 +2,7 @@ from app.graph.workflows.order_management.types import CheckoutProcessorState
 from langchain_core.runnables import RunnableConfig
 from app.services.llm import llm_service
 from langchain_core.prompts import ChatPromptTemplate
+from app.utils.conversation_context import format_conversation_context_with_template
 
 async def processor_failure_handler_node(state: CheckoutProcessorState, config: RunnableConfig | None = None) -> CheckoutProcessorState:
     """Handle checkout processing failure scenarios."""
@@ -10,6 +11,14 @@ async def processor_failure_handler_node(state: CheckoutProcessorState, config: 
         error_message = state.get("error_message", "Unknown checkout processing error")
         checkout_type = state.get("checkout_type", "unknown")
         payment_method = state.get("payment_method", "unknown")
+        
+        # Get conversation context for better error handling
+        conversation_context = format_conversation_context_with_template(
+            state=dict(state),
+            template_name="order_processing",
+            limit=5,
+            fallback_message=""
+        )
         
         # Generate user-friendly error message using LLM
         failure_prompt = ChatPromptTemplate.from_messages([
@@ -22,6 +31,7 @@ async def processor_failure_handler_node(state: CheckoutProcessorState, config: 
                 3. Maintains a supportive, solution-oriented tone
                 4. Offers assistance or alternatives
                 5. Keeps it brief and actionable
+                6. If conversation context shows what the user was trying to do, reference it naturally
                 
                 Common error types and suggestions:
                 - Address issues: Suggest updating or selecting different address
@@ -32,11 +42,12 @@ async def processor_failure_handler_node(state: CheckoutProcessorState, config: 
                 
                 Keep it conversational and under 3 sentences.
             """),
-            ("user", f"Checkout processing failed for {checkout_type} checkout with {payment_method} payment. Error: {error_message}")
+            ("user", f"Checkout processing failed for {checkout_type} checkout with {payment_method} payment. Error: {error_message}"),
+            ("user", "{conversation_context}")
         ])
         
         llm = llm_service.get_llm_without_tools(disable_streaming=True)
-        response = await llm.ainvoke(failure_prompt.invoke({}))
+        response = await llm.ainvoke(failure_prompt.invoke({"conversation_context": conversation_context}))
         
         failure_message = str(response.content).strip()
         

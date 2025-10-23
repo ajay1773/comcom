@@ -19,18 +19,20 @@ const AddToCartSuccess: FC<{ details: AddToCartSuccessType }> = ({
             ? String(details.message)
             : "Product has been successfully added to your cart."
         }
-        icon={<CheckCircleIcon className="w-10 h-10 text-green-600" />}
+        icon={
+          <CheckCircleIcon className="w-12 h-12 sm:w-14 sm:h-14 text-green-600" />
+        }
         actions={
-          <div className="flex gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
             <Button
               variant="outline"
-              className="w-1/2"
+              className="flex-1 text-sm"
               onClick={async () => await sendMessage("Show me more products")}
             >
               Continue Shopping
             </Button>
             <Button
-              className="bg-blue-500 text-white px-4 py-2 rounded-md w-1/2 hover:bg-blue-600 hover:cursor-pointer transition-all duration-300 active:bg-blue-700"
+              className="flex-1 text-sm"
               onClick={async () => await sendMessage("Show me my cart")}
             >
               View Cart

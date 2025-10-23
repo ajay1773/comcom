@@ -65,13 +65,13 @@ async def validate_cart_checkout(state: CheckoutState, user_id: int):
             # Add to validated items with all necessary details for order creation
             validated_item = {
                 "product_id": item.product_id,
-                "name": product_details.name,
+                "name": product_details.title   ,
                 "brand": product_details.brand,
                 "quantity": item.quantity,
-                "unit_price": item.unit_price,
-                "total_price": item.total_price,
+                "unit_price": product_details.price,
+                "total_price": product_details.price * item.quantity,
                 "size": item.size,
-                "color": item.color
+                "color": product_details.color
             }
             
             validated_items.append(validated_item)
@@ -132,7 +132,7 @@ async def validate_direct_purchase(state: CheckoutState):
         
         cart_item = {
             "product_id": found_product.id,
-            "name": found_product.name,
+            "name": found_product.title,
             "brand": found_product.brand,
             "quantity": quantity,
             "unit_price": unit_price,
@@ -145,7 +145,7 @@ async def validate_direct_purchase(state: CheckoutState):
         state["cart_items"] = [cart_item]
         state["total_amount"] = total_price
         
-        print(f"Direct purchase validation successful: {found_product.name} - ${total_price}")
+        print(f"Direct purchase validation successful: {found_product.title} - ${total_price}")
         
     except Exception as e:
         print(f"Direct purchase validation error: {e}")

@@ -19,7 +19,7 @@ class ConversationService:
         INSERT INTO conversations (thread_id, user_id, title, last_message_at)
         VALUES (?, ?, ?, ?)
         RETURNING id, thread_id, user_id, title, created_at, updated_at, 
-                 last_message_at, message_count, is_archived, is_favorite
+                 last_message_at, message_count
         """
         
         now = datetime.now().isoformat()
@@ -38,9 +38,7 @@ class ConversationService:
                 created_at=row[4],
                 updated_at=row[5],
                 last_message_at=row[6],
-                message_count=row[7],
-                is_archived=bool(row[8]),
-                is_favorite=bool(row[9])
+                message_count=row[7]
             )
         raise Exception("Failed to create conversation")
 
@@ -48,7 +46,7 @@ class ConversationService:
         """Get a conversation by thread ID."""
         query = """
         SELECT id, thread_id, user_id, title, created_at, updated_at,
-               last_message_at, message_count, is_archived, is_favorite
+               last_message_at, message_count
         FROM conversations
         WHERE thread_id = ?
         """
@@ -65,9 +63,7 @@ class ConversationService:
                 created_at=row[4],
                 updated_at=row[5],
                 last_message_at=row[6],
-                message_count=row[7],
-                is_archived=bool(row[8]),
-                is_favorite=bool(row[9])
+                message_count=row[7]
             )
         return None
 
@@ -75,7 +71,7 @@ class ConversationService:
         """Get a conversation by its unique ID."""
         query = """
         SELECT id, thread_id, user_id, title, created_at, updated_at,
-               last_message_at, message_count, is_archived, is_favorite
+               last_message_at, message_count
         FROM conversations
         WHERE id = ?
         """
@@ -92,27 +88,22 @@ class ConversationService:
                 created_at=row[4],
                 updated_at=row[5],
                 last_message_at=row[6],
-                message_count=row[7],
-                is_archived=bool(row[8]),
-                is_favorite=bool(row[9])
+                message_count=row[7]
             )
         return None
 
     async def get_user_conversations(
         self, 
         user_id: int, 
-        include_archived: bool = False,
         limit: int = 50,
         offset: int = 0
     ) -> List[Conversation]:
         """Get all conversations for a user, ordered by last message time."""
-        archived_filter = "" if include_archived else "AND is_archived = FALSE"
-        
-        query = f"""
+        query = """
         SELECT id, thread_id, user_id, title, created_at, updated_at,
-               last_message_at, message_count, is_archived, is_favorite
+               last_message_at, message_count
         FROM conversations
-        WHERE user_id = ? {archived_filter}
+        WHERE user_id = ?
         ORDER BY last_message_at DESC, updated_at DESC
         LIMIT ? OFFSET ?
         """
@@ -129,9 +120,7 @@ class ConversationService:
                 created_at=row[4],
                 updated_at=row[5],
                 last_message_at=row[6],
-                message_count=row[7],
-                is_archived=bool(row[8]),
-                is_favorite=bool(row[9])
+                message_count=row[7]
             ))
         
         return conversations
@@ -226,32 +215,6 @@ class ConversationService:
             print(f"⚠️ Failed to regenerate title for {thread_id}: {e}")
             return "New Chat"
 
-    async def archive_conversation(self, thread_id: str, archived: bool = True) -> bool:
-        """Archive or unarchive a conversation."""
-        now = datetime.now().isoformat()
-        
-        query = """
-        UPDATE conversations 
-        SET is_archived = ?, updated_at = ?
-        WHERE thread_id = ?
-        """
-        
-        await db_service.execute_query(query, (archived, now, thread_id))
-        return True
-
-    async def favorite_conversation(self, thread_id: str, favorite: bool = True) -> bool:
-        """Mark or unmark a conversation as favorite."""
-        now = datetime.now().isoformat()
-        
-        query = """
-        UPDATE conversations 
-        SET is_favorite = ?, updated_at = ?
-        WHERE thread_id = ?
-        """
-        
-        await db_service.execute_query(query, (favorite, now, thread_id))
-        return True
-
     async def delete_conversation(self, thread_id: str) -> bool:
         """Delete a conversation permanently."""
         query = "DELETE FROM conversations WHERE thread_id = ?"
@@ -282,7 +245,7 @@ class ConversationService:
         """Search conversations by title."""
         query = """
         SELECT id, thread_id, user_id, title, created_at, updated_at,
-               last_message_at, message_count, is_archived, is_favorite
+               last_message_at, message_count
         FROM conversations
         WHERE user_id = ? AND title LIKE ?
         ORDER BY last_message_at DESC
@@ -302,9 +265,7 @@ class ConversationService:
                 created_at=row[4],
                 updated_at=row[5],
                 last_message_at=row[6],
-                message_count=row[7],
-                is_archived=bool(row[8]),
-                is_favorite=bool(row[9])
+                message_count=row[7]
             ))
         
         return conversations

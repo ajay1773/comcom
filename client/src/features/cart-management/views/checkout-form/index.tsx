@@ -251,125 +251,351 @@ Credit Card Details:
   );
 
   return (
-    <div className="flex h-full overflow-y-auto">
-      <Card className="w-full max-w-4xl mx-auto border-none bg-transparent">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Checkout</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          {/* Products Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Order Summary</h3>
-            <div className="space-y-3">
-              {get(data, "product_items", []).map((item) => {
-                const productId = get(item, "product_id", "");
-                const size = get(item, "size", "");
-                const productDetails = get(item, "product_details", {});
+    <Card className="w-full border-none bg-transparent">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-lg sm:text-xl font-bold">Checkout</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6">
+        {/* Products Section */}
+        <div className="space-y-3 sm:space-y-4">
+          <h3 className="text-base sm:text-lg font-semibold">Order Summary</h3>
+          <div className="space-y-2 sm:space-y-3">
+            {get(data, "product_items", []).map((item) => {
+              const productId = get(item, "product_id", "");
+              const size = get(item, "size", "");
+              const productDetails = get(item, "product_details", {});
 
-                // Handle both old and new image structure
-                let thumbnailSrc = "";
-                const imagesData = get(productDetails, "images", "");
+              // Handle both old and new image structure
+              let thumbnailSrc = "";
+              const imagesData = get(productDetails, "images", "");
 
-                if (typeof imagesData === "string" && imagesData) {
-                  try {
-                    const parsedImages = JSON.parse(imagesData);
-                    // Check if it's an array (new structure) or object (old structure)
-                    if (Array.isArray(parsedImages)) {
-                      thumbnailSrc = parsedImages[0] || "";
-                    } else {
-                      thumbnailSrc = parsedImages.thumbnail || "";
-                    }
-                  } catch {
-                    thumbnailSrc = "";
+              if (typeof imagesData === "string" && imagesData) {
+                try {
+                  const parsedImages = JSON.parse(imagesData);
+                  // Check if it's an array (new structure) or object (old structure)
+                  if (Array.isArray(parsedImages)) {
+                    thumbnailSrc = parsedImages[0] || "";
+                  } else {
+                    thumbnailSrc = parsedImages.thumbnail || "";
                   }
+                } catch {
+                  thumbnailSrc = "";
                 }
+              }
 
-                // Fallback to thumbnail field
-                if (!thumbnailSrc) {
-                  thumbnailSrc = get(productDetails, "thumbnail", "");
-                }
+              // Fallback to thumbnail field
+              if (!thumbnailSrc) {
+                thumbnailSrc = get(productDetails, "thumbnail", "");
+              }
 
-                const productName =
-                  get(productDetails, "title", "") ||
-                  get(productDetails, "name", "");
-                const brandName = get(productDetails, "brand", "");
-                const totalPrice = get(item, "total_price", 0);
-                const quantity = get(item, "quantity", 0);
-                const unitPrice =
-                  get(productDetails, "price", 0) || get(item, "unit_price", 0);
+              const productName =
+                get(productDetails, "title", "") ||
+                get(productDetails, "name", "");
+              const brandName = get(productDetails, "brand", "");
+              const totalPrice = get(item, "total_price", 0);
+              const quantity = get(item, "quantity", 0);
+              const unitPrice =
+                get(productDetails, "price", 0) || get(item, "unit_price", 0);
 
-                return (
-                  <div
-                    key={`${productId}-${size}`}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <img
-                        src={thumbnailSrc}
-                        alt={productName}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <div className="flex flex-col gap-2 flex-1">
-                        <div>
-                          <h4 className="font-semibold text-lg">
-                            {productName}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {brandName}
-                          </p>
-                        </div>
+              return (
+                <div
+                  key={`${productId}-${size}`}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border rounded-lg"
+                >
+                  <div className="flex items-start gap-2.5 sm:gap-3 flex-1">
+                    <img
+                      src={thumbnailSrc}
+                      alt={productName}
+                      className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-md shrink-0"
+                    />
+                    <div className="flex flex-col gap-1.5 sm:gap-2 flex-1 min-w-0">
+                      <div>
+                        <h4 className="font-semibold text-sm sm:text-base line-clamp-2 leading-tight">
+                          {productName}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                          {brandName}
+                        </p>
+                      </div>
 
-                        <div className="flex gap-2 flex-wrap">
-                          {!isEmpty(size) && (
-                            <Badge variant="secondary" className="text-xs">
-                              Size: {size}
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="text-xs">
-                            ${unitPrice.toFixed(2)} each
+                      <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+                        {!isEmpty(size) && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] sm:text-xs h-5 sm:h-auto"
+                          >
+                            Size: {size}
                           </Badge>
-                        </div>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] sm:text-xs h-5 sm:h-auto"
+                        >
+                          ${unitPrice.toFixed(2)} each
+                        </Badge>
                       </div>
                     </div>
-
-                    <div className="flex flex-col items-end gap-1">
-                      <p className="text-sm text-muted-foreground">
-                        Qty: {quantity}
-                      </p>
-                      <p className="text-xl font-bold">
-                        ${totalPrice.toFixed(2)}
-                      </p>
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between items-center pt-4 border-t">
-              <span className="text-lg font-semibold">Total:</span>
-              <span className="text-xl font-bold">
-                ${get(data, "total_amount", 0).toFixed(2)}
-              </span>
-            </div>
+
+                  <div className="flex items-center justify-between sm:justify-end sm:flex-col sm:items-end gap-2 sm:gap-1 pl-[4.5rem] sm:pl-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Qty: {quantity}
+                    </p>
+                    <p className="text-base sm:text-lg font-bold">
+                      ${totalPrice.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+          <div className="flex justify-between items-center pt-3 sm:pt-4 border-t">
+            <span className="text-sm sm:text-base font-semibold">Total:</span>
+            <span className="text-lg sm:text-xl font-bold">
+              ${get(data, "total_amount", 0).toFixed(2)}
+            </span>
+          </div>
+        </div>
 
-          <Separator />
+        <Separator />
 
-          {/* Checkout Form */}
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Personal Information Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Checkout Form */}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-5 sm:space-y-6"
+          >
+            {/* Personal Information Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold">
+                Personal Information
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5 sm:space-y-2">
+                      <FormLabel className="text-xs sm:text-sm">
+                        Full Name *
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="John Doe"
+                          className="text-sm h-9 sm:h-10"
+                          {...field}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(
+                              /[^a-zA-Z\s]/g,
+                              ""
+                            );
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5 sm:space-y-2">
+                      <FormLabel className="text-xs sm:text-sm">
+                        Email Address *
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="john@example.com"
+                          className="text-sm h-9 sm:h-10"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-xs" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5 sm:space-y-2">
+                    <FormLabel className="text-xs sm:text-sm">
+                      Phone Number *
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="123-456-7890"
+                        className="text-sm h-9 sm:h-10"
+                        {...field}
+                        onChange={(e) => {
+                          const formatted = formatPhoneNumber(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                        maxLength={12}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Shipping Address Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold">
+                Shipping Address
+              </h3>
+              <FormField
+                control={form.control}
+                name="selectedAddressId"
+                render={({ field }) => (
+                  <FormItem className="space-y-2 sm:space-y-3">
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="space-y-2 sm:space-y-3"
+                      >
+                        {get(data, "saved_addresses", []).map((address) => {
+                          const addressId = get(address, "id", "");
+                          const street = get(address, "street", "");
+                          const city = get(address, "city", "");
+                          const state = get(address, "state", "");
+                          const zipCode = get(address, "zip_code", "");
+                          const isDefault = get(address, "is_default", false);
+
+                          return (
+                            <div
+                              key={addressId}
+                              className="flex items-start space-x-2.5 sm:space-x-3 p-3 sm:p-4 border rounded-lg hover:bg-gray-700/10 transition-colors"
+                            >
+                              <RadioGroupItem
+                                value={toString(addressId)}
+                                id={`address-${addressId}`}
+                                className="mt-0.5 sm:mt-1"
+                              />
+                              <div className="flex-1 space-y-0.5 sm:space-y-1">
+                                <label
+                                  htmlFor={`address-${addressId}`}
+                                  className="text-xs sm:text-sm font-medium leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                                    <span className="break-words">
+                                      {street}, {city}, {state} {zipCode}
+                                    </span>
+                                    {isDefault && (
+                                      <Badge
+                                        variant="default"
+                                        className="text-[10px] sm:text-xs h-4 sm:h-5 w-fit"
+                                      >
+                                        Default
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Payment Method Section */}
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold">
+                Payment Method
+              </h3>
+              <FormField
+                control={form.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem className="space-y-2 sm:space-y-3">
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="space-y-2 sm:space-y-3"
+                      >
+                        {includes(
+                          get(data, "allowed_payment_methods", []),
+                          "cash_on_delivery"
+                        ) && (
+                          <div className="flex items-center space-x-2.5 sm:space-x-3 p-3 sm:p-4 border rounded-lg hover:bg-gray-700/10 transition-colors">
+                            <RadioGroupItem value="cash_on_delivery" id="cod" />
+                            <label
+                              htmlFor="cod"
+                              className="text-xs sm:text-sm font-medium leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              Cash on Delivery
+                              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                                Pay when your order is delivered
+                              </p>
+                            </label>
+                          </div>
+                        )}
+
+                        {includes(
+                          get(data, "allowed_payment_methods", []),
+                          "credit_card"
+                        ) && (
+                          <div className="flex items-start space-x-2.5 sm:space-x-3 p-3 sm:p-4 border rounded-lg hover:bg-gray-700/10 transition-colors">
+                            <RadioGroupItem
+                              value="credit_card"
+                              id="credit_card"
+                              className="mt-0.5 sm:mt-1"
+                            />
+                            <label
+                              htmlFor="credit_card"
+                              className="text-xs sm:text-sm font-medium leading-tight peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                            >
+                              Credit Card
+                              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                                Pay securely with your credit card
+                              </p>
+                            </label>
+                          </div>
+                        )}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+
+              {/* Credit Card Details (shown when credit card is selected) */}
+              {paymentMethod === "credit_card" && (
+                <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-700/10 rounded-lg space-y-3 sm:space-y-4">
+                  <h4 className="text-sm sm:text-base font-medium">
+                    Credit Card Details
+                  </h4>
+
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="cardHolderName"
                     render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Full Name *</FormLabel>
+                      <FormItem className="space-y-1.5 sm:space-y-2">
+                        <FormLabel className="text-xs sm:text-sm">
+                          Cardholder Name *
+                        </FormLabel>
                         <FormControl>
                           <Input
                             placeholder="John Doe"
+                            className="text-sm h-9 sm:h-10"
                             {...field}
                             onChange={(e) => {
                               const value = e.target.value.replace(
@@ -380,310 +606,114 @@ Credit Card Details:
                             }}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
 
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="cardNumber"
                     render={({ field }) => (
-                      <FormItem className="space-y-2">
-                        <FormLabel>Email Address *</FormLabel>
+                      <FormItem className="space-y-1.5 sm:space-y-2">
+                        <FormLabel className="text-xs sm:text-sm">
+                          Card Number *
+                        </FormLabel>
                         <FormControl>
                           <Input
-                            type="email"
-                            placeholder="john@example.com"
+                            placeholder="1234 5678 9012 3456"
+                            className="text-sm h-9 sm:h-10"
+                            maxLength={19}
                             {...field}
+                            onChange={(e) => {
+                              const formatted = formatCardNumber(
+                                e.target.value
+                              );
+                              field.onChange(formatted);
+                            }}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-xs" />
                       </FormItem>
                     )}
                   />
-                </div>
 
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel>Phone Number *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="123-456-7890"
-                          {...field}
-                          onChange={(e) => {
-                            const formatted = formatPhoneNumber(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          maxLength={12}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Shipping Address Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Shipping Address</h3>
-                <FormField
-                  control={form.control}
-                  name="selectedAddressId"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="space-y-3"
-                        >
-                          {get(data, "saved_addresses", []).map((address) => {
-                            const addressId = get(address, "id", "");
-                            const street = get(address, "street", "");
-                            const city = get(address, "city", "");
-                            const state = get(address, "state", "");
-                            const zipCode = get(address, "zip_code", "");
-                            const isDefault = get(address, "is_default", false);
-
-                            return (
-                              <div
-                                key={addressId}
-                                className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-700/10 transition-colors"
-                              >
-                                <RadioGroupItem
-                                  value={toString(addressId)}
-                                  id={`address-${addressId}`}
-                                  className="mt-1"
-                                />
-                                <div className="flex-1 space-y-1">
-                                  <label
-                                    htmlFor={`address-${addressId}`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span>
-                                        {street}, {city}, {state} {zipCode}
-                                      </span>
-                                      {isDefault && (
-                                        <Badge
-                                          variant="default"
-                                          className="text-xs"
-                                        >
-                                          Default
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </label>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <Separator />
-
-              {/* Payment Method Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Payment Method</h3>
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="space-y-3"
-                        >
-                          {includes(
-                            get(data, "allowed_payment_methods", []),
-                            "cash_on_delivery"
-                          ) && (
-                            <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-gray-700/10 transition-colors">
-                              <RadioGroupItem
-                                value="cash_on_delivery"
-                                id="cod"
-                              />
-                              <label
-                                htmlFor="cod"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                              >
-                                Cash on Delivery
-                                <p className="text-xs text-gray-600 mt-1">
-                                  Pay when your order is delivered
-                                </p>
-                              </label>
-                            </div>
-                          )}
-
-                          {includes(
-                            get(data, "allowed_payment_methods", []),
-                            "credit_card"
-                          ) && (
-                            <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-gray-700/10 transition-colors">
-                              <RadioGroupItem
-                                value="credit_card"
-                                id="credit_card"
-                                className="mt-1"
-                              />
-                              <label
-                                htmlFor="credit_card"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
-                              >
-                                Credit Card
-                                <p className="text-xs text-gray-600 mt-1">
-                                  Pay securely with your credit card
-                                </p>
-                              </label>
-                            </div>
-                          )}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Credit Card Details (shown when credit card is selected) */}
-                {paymentMethod === "credit_card" && (
-                  <div className="mt-6 p-4 bg-gray-700/10 rounded-lg space-y-4">
-                    <h4 className="font-medium">Credit Card Details</h4>
-
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <FormField
                       control={form.control}
-                      name="cardHolderName"
+                      name="cvv"
                       render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Cardholder Name *</FormLabel>
+                        <FormItem className="space-y-1.5 sm:space-y-2">
+                          <FormLabel className="text-xs sm:text-sm">
+                            CVV *
+                          </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="John Doe"
+                              type="password"
+                              placeholder="123"
+                              className="text-sm h-9 sm:h-10"
+                              maxLength={3}
                               {...field}
                               onChange={(e) => {
-                                const value = e.target.value.replace(
-                                  /[^a-zA-Z\s]/g,
-                                  ""
-                                );
+                                const value = e.target.value.replace(/\D/g, "");
                                 field.onChange(value);
                               }}
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
 
                     <FormField
                       control={form.control}
-                      name="cardNumber"
+                      name="expiryDate"
                       render={({ field }) => (
-                        <FormItem className="space-y-2">
-                          <FormLabel>Card Number *</FormLabel>
+                        <FormItem className="space-y-1.5 sm:space-y-2">
+                          <FormLabel className="text-xs sm:text-sm">
+                            Expiry Date *
+                          </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="1234 5678 9012 3456"
-                              maxLength={19}
+                              placeholder="MM/YY"
+                              className="text-sm h-9 sm:h-10"
+                              maxLength={5}
                               {...field}
                               onChange={(e) => {
-                                const formatted = formatCardNumber(
+                                const formatted = formatExpiryDate(
                                   e.target.value
                                 );
                                 field.onChange(formatted);
                               }}
                             />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-xs" />
                         </FormItem>
                       )}
                     />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="cvv"
-                        render={({ field }) => (
-                          <FormItem className="space-y-2">
-                            <FormLabel>CVV *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="password"
-                                placeholder="123"
-                                maxLength={3}
-                                {...field}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(
-                                    /\D/g,
-                                    ""
-                                  );
-                                  field.onChange(value);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="expiryDate"
-                        render={({ field }) => (
-                          <FormItem className="space-y-2">
-                            <FormLabel>Expiry Date *</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="MM/YY"
-                                maxLength={5}
-                                {...field}
-                                onChange={(e) => {
-                                  const formatted = formatExpiryDate(
-                                    e.target.value
-                                  );
-                                  field.onChange(formatted);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+            </div>
 
-              {/* Submit Button */}
-              <div className="pt-6 border-t">
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-lg font-semibold"
-                  disabled={isSubmitting || !isFormValid()}
-                >
-                  {isSubmitting
-                    ? "Processing..."
-                    : `Pay & Checkout - $${get(data, "total_amount", 0).toFixed(
-                        2
-                      )}`}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+            {/* Submit Button */}
+            <div className="pt-4 sm:pt-6 border-t">
+              <Button
+                type="submit"
+                className="w-full h-10 sm:h-12 text-sm sm:text-base font-semibold"
+                disabled={isSubmitting || !isFormValid()}
+              >
+                {isSubmitting
+                  ? "Processing..."
+                  : `Pay & Checkout - $${get(data, "total_amount", 0).toFixed(
+                      2
+                    )}`}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 

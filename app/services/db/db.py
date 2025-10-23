@@ -114,8 +114,6 @@ class Conversation(BaseModel):
     updated_at: str | None = None
     last_message_at: str | None = None
     message_count: int = 0
-    is_archived: bool = False
-    is_favorite: bool = False
 
 class DatabaseService:
     """Service for database operations."""
@@ -243,6 +241,35 @@ class DatabaseService:
         )
         """
 
+        # Create user token usage table (for logged-in users - daily token quota tracking)
+        create_user_token_usage_table = """
+        CREATE TABLE IF NOT EXISTS user_token_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            tokens_used INTEGER DEFAULT 0,
+            daily_limit INTEGER DEFAULT 100000,
+            reset_date DATE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            UNIQUE(user_id, reset_date)
+        )
+        """
+
+        # Create rate limit tracking table (for logged-out users - IP-based rate limiting)
+        create_rate_limit_table = """
+        CREATE TABLE IF NOT EXISTS rate_limit_tracking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_address TEXT NOT NULL,
+            request_count INTEGER DEFAULT 0,
+            window_start DATETIME NOT NULL,
+            window_end DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(ip_address, window_start)
+        )
+        """
+
         # Create products table
         create_products_table = """
         CREATE TABLE IF NOT EXISTS products (
@@ -333,8 +360,6 @@ class DatabaseService:
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_message_at DATETIME,
             message_count INTEGER DEFAULT 0,
-            is_archived BOOLEAN DEFAULT FALSE,
-            is_favorite BOOLEAN DEFAULT FALSE,
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
         """
@@ -346,6 +371,8 @@ class DatabaseService:
         await self.execute_query(create_user_carts_table)
         await self.execute_query(create_cart_items_table)
         await self.execute_query(create_addresses_table)
+        await self.execute_query(create_user_token_usage_table)
+        await self.execute_query(create_rate_limit_table)
         await self.execute_query(create_products_table)
         await self.execute_query(create_orders_table)
         await self.execute_query(create_order_items_table)
@@ -354,6 +381,8 @@ class DatabaseService:
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_sessions_token ON user_sessions(session_token)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_sessions_thread ON user_sessions(thread_id)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_token_usage_user_date ON user_token_usage(user_id, reset_date)")
+        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_rate_limit_ip_window ON rate_limit_tracking(ip_address, window_start)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_addresses_user ON user_addresses(user_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand)")
@@ -373,8 +402,6 @@ class DatabaseService:
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_thread_id ON conversations(thread_id)")
         await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at)")
-        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(is_archived)")
-        await self.execute_query("CREATE INDEX IF NOT EXISTS idx_conversations_favorite ON conversations(is_favorite)")
 
     async def create_order(self, order: Order):
         """Create an order in the database."""

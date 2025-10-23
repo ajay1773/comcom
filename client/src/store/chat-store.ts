@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { ChatChunkResponse, Message, ToolStatus } from "../types/chat";
 import { EVENT_EMITTER_ADD_WORKFLOW_JSON } from "@/config";
 import emitter from "@/core/event-emitter";
+import { get as getDetails } from "lodash";
 
 // Conversation types
 export interface Conversation {
@@ -13,8 +14,21 @@ export interface Conversation {
   updated_at: string | null;
   last_message_at: string | null;
   message_count: number;
-  is_archived: boolean;
-  is_favorite: boolean;
+}
+
+// Rate limit types
+export interface RateLimitStatus {
+  isRateLimited: boolean;
+  limitType: "requests" | "tokens" | null;
+  message: string | null;
+  retryAfter?: number; // seconds
+  remainingRequests?: number;
+  remainingTokens?: number;
+  tokensUsed?: number;
+  dailyLimit?: number;
+  limit?: number;
+  resetTime?: string;
+  resetDate?: string;
 }
 
 interface ChatState {
@@ -32,6 +46,9 @@ interface ChatState {
     first_name: string;
     last_name: string;
   } | null;
+
+  // Rate limiting
+  rateLimitStatus: RateLimitStatus;
 
   // Conversation management
   conversations: Conversation[];
@@ -63,6 +80,11 @@ interface ChatState {
   setUserDetails: (details: string) => void;
   logout: () => void;
 
+  // Rate limiting actions
+  setRateLimitStatus: (status: RateLimitStatus) => void;
+  clearRateLimitError: () => void;
+  checkRateLimitStatus: (apiBaseUrl?: string) => Promise<void>;
+
   // Async Actions
   sendMessage: (content: string, apiBaseUrl?: string) => Promise<void>;
   loadConversationHistory: (
@@ -85,16 +107,6 @@ interface ChatState {
   updateConversationTitle: (
     conversationId: number,
     title: string,
-    apiBaseUrl?: string
-  ) => Promise<void>;
-  archiveConversation: (
-    conversationId: number,
-    archived: boolean,
-    apiBaseUrl?: string
-  ) => Promise<void>;
-  favoriteConversation: (
-    conversationId: number,
-    favorite: boolean,
     apiBaseUrl?: string
   ) => Promise<void>;
   deleteConversation: (
@@ -125,6 +137,13 @@ const initialState = {
   userDetails: localStorage.getItem("user_details")
     ? JSON.parse(localStorage.getItem("user_details") || "{}")
     : null,
+
+  // Rate limiting
+  rateLimitStatus: {
+    isRateLimited: false,
+    limitType: null,
+    message: null,
+  },
 
   // Conversation management
   conversations: [],
@@ -206,12 +225,98 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   setToolStatus: (toolStatus) => set({ toolStatus }),
   setDisfluencyMessage: (message) => set({ disfluencyMessage: message }),
 
+  // Rate limiting actions
+  setRateLimitStatus: (status) => set({ rateLimitStatus: status }),
+
+  clearRateLimitError: () =>
+    set({
+      rateLimitStatus: {
+        isRateLimited: false,
+        limitType: null,
+        message: null,
+      },
+    }),
+
+  checkRateLimitStatus: async (apiBaseUrl = "http://localhost:8000") => {
+    try {
+      const token = localStorage.getItem("jwt_token") || "";
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${apiBaseUrl}/api/rate-limit/status`, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        console.error("Failed to check rate limit status:", response.status);
+        return;
+      }
+
+      const data = await response.json();
+
+      // Check if rate limited
+      if (
+        data.limit_exceeded ||
+        data.remaining_requests === 0 ||
+        data.remaining_tokens === 0
+      ) {
+        set({
+          rateLimitStatus: {
+            isRateLimited: true,
+            limitType: data.limit_type || "requests",
+            message:
+              data.limit_type === "tokens"
+                ? `Daily token limit reached. Resets on ${data.reset_date}`
+                : `Rate limit reached. Try again in ${Math.ceil(
+                    (data.retry_after || 0) / 60
+                  )} minutes.`,
+            retryAfter: data.retry_after,
+            remainingRequests: data.remaining_requests,
+            remainingTokens: data.remaining_tokens,
+            tokensUsed: data.tokens_used,
+            dailyLimit: data.daily_limit,
+            limit: data.limit,
+            resetTime: data.reset_time,
+            resetDate: data.reset_date,
+          },
+        });
+      } else {
+        // Not rate limited - update status
+        set({
+          rateLimitStatus: {
+            isRateLimited: false,
+            limitType: data.limit_type || null,
+            message: null,
+            remainingRequests: data.remaining_requests,
+            remainingTokens: data.remaining_tokens,
+            tokensUsed: data.tokens_used,
+            dailyLimit: data.daily_limit,
+            limit: data.limit,
+            resetTime: data.reset_time,
+            resetDate: data.reset_date,
+          },
+        });
+      }
+
+      console.log("📊 Rate limit status:", data);
+    } catch (error) {
+      console.error("Error checking rate limit status:", error);
+    }
+  },
+
   resetChat: () =>
     set({
       ...initialState,
-      // Preserve conversations and user details when resetting chat
+      // Preserve conversations, user details, and rate limit status when resetting chat
       conversations: get().conversations,
       userDetails: get().userDetails,
+      rateLimitStatus: get().rateLimitStatus,
       currentConversation: null,
     }),
 
@@ -278,6 +383,39 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         },
         body: JSON.stringify({ query: content, thread_id: store.threadId }),
       });
+
+      // Handle rate limiting (429) errors
+      if (response.status === 429) {
+        const errorData = await response.json();
+        const detail = errorData.detail || errorData;
+
+        // Set rate limit status
+        store.setRateLimitStatus({
+          isRateLimited: true,
+          limitType: detail.limit_type || "requests",
+          message: detail.message || detail.error || "Rate limit exceeded",
+          retryAfter: detail.retry_after,
+          remainingRequests: detail.remaining_requests,
+          remainingTokens: detail.remaining_tokens,
+          tokensUsed: detail.tokens_used,
+          dailyLimit: detail.daily_limit,
+          limit: detail.limit,
+          resetTime: detail.reset_time,
+          resetDate: detail.reset_date,
+        });
+
+        // Set error for UI
+        store.setError(detail.message || detail.error || "Rate limit exceeded");
+        store.setLoading(false);
+
+        // Remove the placeholder assistant message
+        if (assistantMessageCreated) {
+          store.finishStreaming(assistantMessageId);
+        }
+
+        console.error("⛔ Rate limit exceeded:", detail);
+        return;
+      }
 
       if (!response.ok)
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -422,6 +560,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
               case "workflow_json":
                 if (parsed.json) {
                   store.setWidgetJson(parsed.json);
+                  // Also attach widget to the current assistant message
+                  store.updateStreamingMessage(assistantMessageId, {
+                    json: parsed.json,
+                  });
                   emitter.emit(EVENT_EMITTER_ADD_WORKFLOW_JSON, parsed.json);
                 }
                 break;
@@ -433,6 +575,10 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                     payload: parsed.payload,
                   };
                   store.setWidgetJson(widgetData);
+                  // Also attach widget to the current assistant message
+                  store.updateStreamingMessage(assistantMessageId, {
+                    json: widgetData,
+                  });
                   emitter.emit(EVENT_EMITTER_ADD_WORKFLOW_JSON, widgetData);
                 }
                 break;
@@ -448,7 +594,11 @@ export const useChatStore = create<ChatState>()((set, get) => ({
                   store.setWidgetJson(
                     templatePayload ?? { template: "", payload: {} }
                   );
+                  // Also attach widget to the current assistant message
                   if (templatePayload) {
+                    store.updateStreamingMessage(assistantMessageId, {
+                      json: templatePayload,
+                    });
                     emitter.emit(
                       EVENT_EMITTER_ADD_WORKFLOW_JSON,
                       templatePayload
@@ -582,8 +732,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.widget_json) {
         store.setWidgetJson({
-          template: lastMessage.widget_json.widget_type,
-          payload: lastMessage.widget_json.payload,
+          template: getDetails(lastMessage, "widget_json.widget_type") || "",
+          payload: getDetails(lastMessage, "widget_json.payload") || {},
         });
       }
 
@@ -899,138 +1049,6 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       console.error("Error updating conversation title:", error);
       store.setError(
         `Failed to update conversation title: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-      throw error; // Re-throw so UI can handle it
-    }
-  },
-
-  archiveConversation: async (
-    conversationId: number,
-    archived: boolean,
-    apiBaseUrl = "http://localhost:8000"
-  ) => {
-    const store = get();
-
-    try {
-      const token = localStorage.getItem("jwt_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
-        {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ is_archived: archived }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to ${archived ? "archive" : "unarchive"} conversation: ${
-            response.status
-          } ${response.statusText} - ${errorText}`
-        );
-      }
-
-      const updatedConversation = await response.json();
-
-      // Update conversations list
-      const updatedConversations = store.conversations.map((conv) =>
-        conv.id === conversationId ? updatedConversation : conv
-      );
-
-      set({
-        conversations: updatedConversations,
-        currentConversation:
-          store.currentConversation?.id === conversationId
-            ? updatedConversation
-            : store.currentConversation,
-      });
-
-      console.log(
-        `📦 ${
-          archived ? "Archived" : "Unarchived"
-        } conversation (ID: ${conversationId})`
-      );
-    } catch (error) {
-      console.error("Error archiving conversation:", error);
-      store.setError(
-        `Failed to ${archived ? "archive" : "unarchive"} conversation: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
-      throw error; // Re-throw so UI can handle it
-    }
-  },
-
-  favoriteConversation: async (
-    conversationId: number,
-    favorite: boolean,
-    apiBaseUrl = "http://localhost:8000"
-  ) => {
-    const store = get();
-
-    try {
-      const token = localStorage.getItem("jwt_token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(
-        `${apiBaseUrl}/api/conversations/id/${conversationId}`,
-        {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ is_favorite: favorite }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Failed to ${favorite ? "favorite" : "unfavorite"} conversation: ${
-            response.status
-          } ${response.statusText} - ${errorText}`
-        );
-      }
-
-      const updatedConversation = await response.json();
-
-      // Update conversations list
-      const updatedConversations = store.conversations.map((conv) =>
-        conv.id === conversationId ? updatedConversation : conv
-      );
-
-      set({
-        conversations: updatedConversations,
-        currentConversation:
-          store.currentConversation?.id === conversationId
-            ? updatedConversation
-            : store.currentConversation,
-      });
-
-      console.log(
-        `⭐ ${
-          favorite ? "Favorited" : "Unfavorited"
-        } conversation (ID: ${conversationId})`
-      );
-    } catch (error) {
-      console.error("Error favoriting conversation:", error);
-      store.setError(
-        `Failed to ${favorite ? "favorite" : "unfavorite"} conversation: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );

@@ -61,6 +61,9 @@ async def extract_search_parameters_node(state: ProductSearchState) -> ProductSe
             - "Selfie Lamp" → "mobile-accessories,Selfie Lamp"
             - "Dodge Hornet GT Plus" → "automotive,vehicle"
             - "shirts, t-shirts" → "mens-shirts,shirts, t-shirts"
+            - "cars" → "vehicle,cars"
+            - "women-watches" → "womens-watches,women-watches"
+
 
             ### 1.1. Rules for mobile phone search (optional)
             For general mobile phone search, extract the brand if mentioned if not then add "smartphones" to the keywords.
@@ -123,9 +126,11 @@ async def extract_search_parameters_node(state: ProductSearchState) -> ProductSe
             - "earings" → categories: ["womens-jewellery"]
             - "Dodge Hornet GT Plus" → categories: ["vehicle"]
             - "Charger SXT RWD" → categories: ["vehicle"]
+            - "women-watches" → categories: ["womens-watches"]
+            - "cars" → categories: ["vehicle"]
             - "shirts, t-shirts" → categories: ["mens-shirts"]
             - "cricket bat, cricket ball, baseball bat, baseball ball" → categories: ["sports-accessories"]
-            
+                        
             ### 7. SORT PREFERENCE (optional)
             Determine how to sort results.
 

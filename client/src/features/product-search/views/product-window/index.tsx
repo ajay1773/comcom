@@ -30,14 +30,18 @@ const ProductWindow: FC<ProductWindowProps> = ({ payload }) => {
   return (
     <div className="w-full h-full">
       {selectedProduct ? (
-        <div className="flex w-full h-full flex-col items-start justify-start gap-4 overflow-y-auto">
-          <Button
-            variant={"ghost"}
-            onClick={() => setSelectedProduct(null)}
-            className="absolute"
-          >
-            <LuArrowLeft /> Back
-          </Button>
+        <div className="flex w-full h-full flex-col items-start justify-start overflow-y-auto">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border w-full px-3 sm:px-4 py-2">
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedProduct(null)}
+              className="gap-2 hover:gap-3 transition-all"
+              size="sm"
+            >
+              <LuArrowLeft className="w-4 h-4" />
+              <span>Back to Results</span>
+            </Button>
+          </div>
           <ProductDetails product={selectedProduct} />
         </div>
       ) : (

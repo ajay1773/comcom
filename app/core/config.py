@@ -42,6 +42,16 @@ class Settings:
     RETRY_MAX_ATTEMPTS: int = int(os.getenv("RETRY_MAX_ATTEMPTS", "3"))
     RETRY_BASE_DELAY: float = float(os.getenv("RETRY_BASE_DELAY", "1.0"))
 
+    # Rate Limiting Configuration
+    # For logged-out users (IP-based)
+    RATE_LIMIT_REQUESTS_PER_HOUR: int = int(os.getenv("RATE_LIMIT_REQUESTS_PER_HOUR", "20"))
+    RATE_LIMIT_WINDOW_HOURS: int = int(os.getenv("RATE_LIMIT_WINDOW_HOURS", "1"))
+    
+    # For logged-in users (token-based)
+    # 100k tokens ≈ 50-100 conversations per day (considering avg 1-2k tokens per conversation)
+    DAILY_TOKEN_LIMIT: int = int(os.getenv("DAILY_TOKEN_LIMIT", "100000"))
+    TOKEN_LIMIT_RESET_HOUR: int = int(os.getenv("TOKEN_LIMIT_RESET_HOUR", "0"))  # Reset at midnight
+
     # System Prompt Configuration
     SYSTEM_PROMPT: str = """
         ## Role & Goal
