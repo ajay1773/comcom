@@ -20,15 +20,15 @@ help:
 install:
 	uv pip install -e ".[dev]"
 
-# Render-specific build (no venv needed on Render)
+# Render-specific build
 render-build:
 	pip install uv
 	uv pip install --system uvicorn
 	uv pip install --system -e ".[dev]"
 
-# Render-specific start
+# Render-specific start - using python -m
 render-start:
-	uvicorn main:app --host 0.0.0.0 --port $${PORT:-8000}
+	python -m uvicorn main:app --host 0.0.0.0 --port $${PORT:-8000}
 
 dev:
 	uv pip install uvicorn
