@@ -32,7 +32,10 @@ async def run_edit_cart(state: GlobalState, config: RunnableConfig | None = None
     
     # 4. Merge back into global state
     state["edit_cart"] = updated_sub_state
-    # Text response will be automatically extracted by output_handler_node
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
 
     return state
 

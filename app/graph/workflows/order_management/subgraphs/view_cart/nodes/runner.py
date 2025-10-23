@@ -27,6 +27,8 @@ async def run_view_cart(state: GlobalState, config: RunnableConfig | None = None
     # 4. merge back into global state
     state["view_cart"] = updated_sub_state
     
-    # Text response will be automatically extracted by output_handler_node
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
 
     return state

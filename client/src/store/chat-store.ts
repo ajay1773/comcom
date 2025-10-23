@@ -340,6 +340,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     const isFirstMessage =
       isLoggedIn && !store.currentConversation && store.messages.length === 0;
 
+    // If we don't have a thread_id yet, generate one upfront to prevent race conditions
+    // where multiple messages might be sent before the backend's thread_info arrives
+    if (!store.threadId || store.threadId === "") {
+      const newThreadId = `chat_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
+      store.setThreadId(newThreadId);
+      console.log("🆕 Generated new thread_id:", newThreadId);
+    }
+
     // Add user message
     const userMessage = {
       id: generateMessageId(),

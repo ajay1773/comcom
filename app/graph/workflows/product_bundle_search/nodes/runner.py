@@ -28,7 +28,10 @@ async def run_product_bundle_search(state: GlobalState, config: RunnableConfig |
 
     # 4. Merge back into global state
     state["product_bundle_search"] = updated_sub_state
-    # Workflow output will be automatically extracted by output_handler_node
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
 
     return state
 

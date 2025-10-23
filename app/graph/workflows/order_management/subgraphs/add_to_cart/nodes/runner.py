@@ -28,8 +28,12 @@ async def run_add_to_cart(state: GlobalState, config: RunnableConfig | None = No
     # 3. run the subgraph
     subgraph = AddToCartGraph.create()
     updated_sub_state = cast(AddToCartState, await subgraph.ainvoke(sub_state))
+    
     # 4. merge back into global
     state["add_to_cart"] = updated_sub_state
-    # Text response will be automatically extracted by output_handler_node
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
 
     return state

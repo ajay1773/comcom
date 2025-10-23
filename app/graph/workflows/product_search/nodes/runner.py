@@ -35,9 +35,14 @@ async def run_product_search(state: GlobalState, config: RunnableConfig | None =
     # 3. run the subgraph
     subgraph = ProductSearchGraph.create()
     updated_sub_state = cast(ProductSearchState, await subgraph.ainvoke(sub_state))
+    
     # 4. merge back into global
     state["product_search"] = updated_sub_state
-    # Text response will be automatically extracted by output_handler_node
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
+    
     # Emit product search results widget event
     widget_event_emitter.emit(
         WidgetEventType.PRODUCT_SEARCH_RESULTS,

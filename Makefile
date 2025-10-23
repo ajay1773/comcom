@@ -1,4 +1,4 @@
-.PHONY: dev install clean format lint help setup-search
+.PHONY: dev install clean format lint help setup-search render-build render-start
 # Default target
 .DEFAULT_GOAL := help
 
@@ -10,6 +10,8 @@ help:
 	@echo "  make install             - Install dependencies using uv"
 	@echo "  make dev                 - Run development server with reload"
 	@echo "  make start               - Run production server"
+	@echo "  make render-build        - Build for Render deployment"
+	@echo "  make render-start        - Start for Render deployment"
 	@echo "  make clean               - Remove Python cache files"
 	@echo "  make format              - Format code using black"
 	@echo "  make lint                - Run linting using ruff"
@@ -17,6 +19,16 @@ help:
 
 install:
 	uv pip install -e ".[dev]"
+
+# New: Render-specific build
+render-build:
+	pip install uv
+	uv venv
+	. .venv/bin/activate && uv pip install -e ".[dev]"
+
+# New: Render-specific start
+render-start:
+	. .venv/bin/activate && uvicorn main:app --host 0.0.0.0 --port $(PORT)
 
 dev:
 	uv pip install uvicorn

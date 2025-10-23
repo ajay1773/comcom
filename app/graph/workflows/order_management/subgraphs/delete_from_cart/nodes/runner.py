@@ -29,8 +29,12 @@ async def run_delete_from_cart(state: GlobalState, config: RunnableConfig | None
     # 3. run the subgraph
     subgraph = DeleteFromCartGraph.create()
     updated_sub_state = cast(DeleteFromCartState, await subgraph.ainvoke(sub_state))
+    
     # 4. merge back into global
     state["delete_from_cart"] = updated_sub_state
-    # Text response will be automatically extracted by output_handler_node
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
 
     return state

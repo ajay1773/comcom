@@ -29,5 +29,8 @@ async def run_checkout_ui_provider(state: GlobalState, config: RunnableConfig | 
     # 4. Merge back into global state
     state["checkout_ui_provider"] = updated_sub_state  # type: ignore
     
-    # Text response will be automatically extracted by output_handler_node
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
+    
     return state

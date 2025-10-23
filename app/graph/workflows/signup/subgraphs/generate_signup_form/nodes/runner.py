@@ -20,8 +20,13 @@ async def run_generate_signup_form(state: GlobalState, config: RunnableConfig | 
     # 3. run the subgraph
     subgraph = GenerateSignupFormGraph.create()
     updated_sub_state = cast(GenerateSignupFormState, await subgraph.ainvoke(sub_state))
+    
     # 4. merge back into global
     state["generate_signup_form"] = updated_sub_state
+    
+    # 5. Set workflow outputs for output_handler
+    state["workflow_output_text"] = updated_sub_state.get("workflow_output_text", "")
+    state["workflow_output_json"] = updated_sub_state.get("workflow_output_json", {})
     
     # Emit signup form widget event
     widget_event_emitter.emit(
@@ -31,7 +36,5 @@ async def run_generate_signup_form(state: GlobalState, config: RunnableConfig | 
             "suggested_actions": ["Fill form", "Cancel"]
         }
     )
-    
-    # Text response will be automatically extracted by output_handler_node
     
     return state

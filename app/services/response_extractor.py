@@ -25,10 +25,10 @@ class ResponseExtractor:
         Extract the primary text response from a workflow state.
         
         This method checks multiple sources in order of priority:
-        1. Explicit response field (highest priority)
-        2. workflow_output_text (standardized output)
+        1. workflow_output_text (standardized output - highest priority)
+        2. Subgraph-specific suggestions patterns
         3. suggestions[0] (legacy pattern)
-        4. Subgraph-specific suggestions patterns
+        4. Explicit response field (may be stale from previous workflow)
         5. Empty string (fallback)
         
         Args:
@@ -37,23 +37,24 @@ class ResponseExtractor:
         Returns:
             The extracted text response, or empty string if none found
         """
-        # 1. Check if response is already explicitly set
-        if state.get("response"):
-            return str(state["response"])
-        
-        # 2. Check for standardized workflow_output_text
+        # 1. Check for standardized workflow_output_text (current workflow's output)
+        # This has highest priority to avoid using stale response from previous workflows
         if state.get("workflow_output_text"):
             return str(state["workflow_output_text"])
+        
+        # 2. Check subgraph-specific suggestions patterns
+        response = ResponseExtractor._extract_from_subgraphs(state)
+        if response:
+            return response
         
         # 3. Check for suggestions pattern (legacy)
         suggestions = state.get("suggestions", [])
         if suggestions and len(suggestions) > 0:
             return str(suggestions[0])
         
-        # 4. Check subgraph-specific suggestions patterns
-        response = ResponseExtractor._extract_from_subgraphs(state)
-        if response:
-            return response
+        # 4. Check if response is explicitly set (lower priority as it may be stale)
+        if state.get("response"):
+            return str(state["response"])
         
         # 5. Fallback to empty string
         return ""
